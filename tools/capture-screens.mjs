@@ -3,13 +3,13 @@
  *
  * 运行：node tools/capture-screens.mjs
  *
- * 为什么不用 `chrome --headless --screenshot`：
- *   那个方式在截图时不等页面脚本执行完，实测 12 张图全是空表达式。
+ * 为什么不直接用 `chrome --headless --screenshot`：
+ *   那个方式在截图时不等页面脚本执行完，实测 12 张图全是空表达式；
  *   加 --virtual-time-budget 也不稳定（模块脚本始终没跑）。
- *   换成 CDP 之后可以自己控制节奏：等页面报告"状态已设好"再截图，一次就成。
+ *   换成 CDP 之后可以自己控制节奏：等页面渲染出目标内容再截图，一次就成。
  *
  * 流程：启动 Chrome（带远程调试端口）
- *      → 每张图：Page.navigate → 等 window.__shotReady → Page.captureScreenshot
+ *      → 每张图：开新标签页打开 shot-XX.html → 轮询校验渲染结果 → Page.captureScreenshot
  *      → 写 PNG
  */
 
@@ -56,6 +56,10 @@ cpSync(srcDir, workDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
 if (existsSync(profileDir)) rmSync(profileDir, { recursive: true, force: true });
 
+// 场景脚本放进临时副本的 tools/ 下（页面通过 tools/shot-seed.js 引用）
+mkdirSync(join(workDir, 'tools'), { recursive: true });
+cpSync(join(here, 'shot-seed.js'), join(workDir, 'tools', 'shot-seed.js'));
+
 // 关掉光标闪烁：无限动画会让截图停在不确定的一帧
 const cssPath = join(workDir, 'css', 'style.css');
 writeFileSync(
@@ -64,74 +68,39 @@ writeFileSync(
   'utf8',
 );
 
-// 场景脚本以**传统脚本**形式拼进临时副本（见 bundleClassic 的说明）。
-// 注意：写入时机在下方（等 classicBundle 用 const 声明之后再写），
-// 否则会触发 "Cannot access 'classicBundle' before initialization"。
-
 const baseHtml = readFileSync(join(srcDir, 'index.html'), 'utf8');
 
-/** 为某一张截图生成 HTML
+/**
+ * 为某一张截图生成 HTML。
  *
- *  ★ 为什么这里把 ES 模块改写成传统脚本（经典脚本）：
- *    截图环境里 <script type="module"> 始终没能可靠执行 ——
- *    在 file:// 页面里完全不执行（页面 readyState 已是 complete，模块一行没跑），
- *    在本地 HTTP 下外链模块也报加载错误。而传统脚本没有任何这类限制。
- *    所以这里生成一个"把四个源文件按顺序拼起来、去掉 import/export"的临时副本。
- *    注意：**只作用于截图副本**，仓库里 src/ 的模块写法一字未改。
- *
- *  另一个坑：每张图必须写**独立文件名**，否则浏览器直接用缓存，
- *  第二张开始截到的还是上一张的画面。
+ * 两个要点：
+ *  ① 每张图写**独立文件名**（shot-01.html、shot-02.html…）。
+ *     一开始所有图共用一个 html，结果第 2 张开始浏览器直接用缓存，
+ *     页面根本没重新加载，截到的还是上一张的状态。
+ *  ② 页面本身加载的是传统脚本 js/bundle.js（见 tools/build-bundle.mjs），
+ *     再追加场景脚本 tools/shot-seed.js（同样是传统脚本，通过 window.__calc 设置状态）。
  */
-function bundleClassic() {
-  const strip = (code) =>
-    code
-      .replace(/^\s*import\s[^;]*;\s*$/gm, '')
-      // 拼接后所有函数都在同一作用域，命名空间前缀 ui. 不再需要
-      .replace(/\bui\./g, '')
-      .replace(/^export\s+/gm, '');
-  const parts = ['input-model.js', 'ui.js', 'calc-buttons.js', 'keyboard.js'].map((f) =>
-    strip(readFileSync(join(srcDir, 'js', f), 'utf8')),
-  );
-  // seed 的 import 已经不需要了（同一个作用域里直接可调用）
-  parts.push(strip(readFileSync(join(here, 'shot-seed.js'), 'utf8')));
-  return parts.join('\n\n/* ---------------- 以下为下一个文件 ---------------- */\n\n');
-}
-
-const classicBundle = bundleClassic();
-
-/** 供浏览器直接打开的非模块版页面 */
-function classicHtml(shot) {
+function htmlFor(shot) {
   const pairs = new URLSearchParams();
   if (shot.expr) pairs.set('expr', shot.expr);
   if (shot.armed) pairs.set('armed', shot.armed);
   if (shot.pressed) pairs.set('pressed', shot.pressed);
   if (shot.error) pairs.set('error', shot.error);
-  return baseHtml
-    .replace('<body>', `<body data-shot="${pairs.toString().replace(/&/g, '&amp;')}">`)
-    .replace(/<script type="module" src="js\/[^"]+"><\/script>\s*/g, '')
-    .replace(
-      '</body>',
-      `<script>
+
+  const injected = `<script>
 window.__shotErrors = [];
 window.addEventListener('error', (e) => window.__shotErrors.push('ERR:' + (e.message || e.type)), true);
 </script>
-<script src="bundle.js"></script>
-</body>`,
-    );
-}
+<script src="tools/shot-seed.js"></script>
+</body>`;
 
-function htmlFor(shot) {
-  return classicHtml(shot);
+  return baseHtml
+    .replace('<body>', `<body data-shot="${pairs.toString().replace(/&/g, '&amp;')}">`)
+    .replace('</body>', injected);
 }
-
-// 现在 classicBundle 已初始化，写入临时副本
-writeFileSync(join(workDir, 'bundle.js'), classicBundle, 'utf8');
 
 // ---------------------------------------------------------------- 本地静态服务
-// ★ 必须用 http:// 而不是 file:// 打开页面：
-//   实测在 file:// 页面里，无头 Chrome **不执行 <script type="module">**
-//   （页面 readyState 已经是 complete，模块脚本却一行没跑），
-//   于是所有截图都是初始状态。改用本地 HTTP 服务后模块正常执行。
+// 用本地 HTTP 服务托管临时副本（而不是 file://）：便于按需改写 data-shot 属性。
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -142,6 +111,7 @@ const MIME = {
   '.svg': 'image/svg+xml',
 };
 
+const SITE_PORT = 8123;
 const server = createServer((req, res) => {
   const rel = decodeURIComponent((req.url || '/').split('?')[0]).replace(/^\/+/, '');
   const file = join(workDir, rel);
@@ -152,8 +122,6 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
   res.end(readFileSync(file));
 });
-
-const SITE_PORT = 8123;
 await new Promise((ok) => server.listen(SITE_PORT, '127.0.0.1', ok));
 
 // ---------------------------------------------------------------- 启动 Chrome
@@ -220,19 +188,15 @@ class Cdp {
   send(method, params = {}) {
     this.id += 1;
     const id = this.id;
-    return new Promise((resolve_, reject) => {
-      this.pending.set(id, { resolve: resolve_, reject });
+    return new Promise((res, rej) => {
+      this.pending.set(id, { resolve: res, reject: rej });
       this.ws.send(JSON.stringify({ id, method, params }));
     });
   }
 
   /** 在页面里执行表达式并取回结果 */
   async evaluate(expression) {
-    const r = await this.send('Runtime.evaluate', {
-      expression,
-      returnByValue: true,
-      awaitPromise: true,
-    });
+    const r = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
     if (r.exceptionDetails) {
       throw new Error('页面脚本报错：' + (r.exceptionDetails.exception?.description || ''));
     }
@@ -251,7 +215,6 @@ const READY_TIMEOUT_MS = 8000;
 // ---------------------------------------------------------------- 主流程
 try {
   const version = await waitForChrome();
-
   let made = 0;
 
   for (const shot of SHOTS) {
@@ -302,9 +265,9 @@ try {
         const dump = await cdp.evaluate(`JSON.stringify({
           url: location.href,
           bodyShot: document.body ? document.body.dataset.shot : '(无 body)',
-          seedTrace: document.body ? document.body.dataset.seed : '(未设置 → 脚本没执行)',
+          seedTrace: document.body ? document.body.dataset.seed : '(未设置 → 场景脚本没执行)',
           shownExpr: (document.getElementById('expression') || {}).textContent,
-          hasKeys: !!document.getElementById('keys'),
+          hasBridge: typeof window.__calc,
           errs: window.__shotErrors || [],
         })`);
         throw new Error(
