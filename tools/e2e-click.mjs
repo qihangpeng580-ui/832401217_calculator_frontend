@@ -1,30 +1,29 @@
 /**
- * 端到端点击回归测试（零依赖，只用到 Node 内置能力 + Chrome 的调试协议）
+ * 端到端点击回归测试（零依赖，只用到 Node 内置能力 + Chrome 调试协议）
  *
  * 运行：node tools/e2e-click.mjs
  *
- * 为什么要有这个文件：
- *   截图工具是直接调用模块接口设置状态，绕过了"鼠标点击 → 事件委托 → 按键处理"这条真实链路。
- *   所以界面截图可以完全正常，而用户点按钮却毫无反应（真实踩过：
- *   键盘错位导致某个键被点到缝里，点了没反应）。
- *   这个测试逐个**真实点击**每个按键，并核对表达式行的文本。
+ * ★ 用 file:// 打开页面，而不是本地 HTTP 服务器 —— 这一点很关键。
+ *   因为浏览器在 file:// 页面里**不执行 ES 模块**：
+ *   双击打开 index.html 时模块会被跨域策略拒绝，所有交互都不生效，
+ *   页面看起来正常但点按钮毫无反应。
+ *   （真实踩过：用 http:// 做的测试全部通过，用户双击打开却什么都点不动。）
+ *   所以本测试必须用与用户相同的方式打开页面。
  *
  * 判定：全部通过 exit 0；任何一项不符 exit 1。
  */
 
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:http';
-import { readFileSync, existsSync, cpSync, rmSync } from 'node:fs';
-import { join, resolve, dirname, extname } from 'node:path';
+import { readFileSync, existsSync, cpSync, rmSync, mkdirSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
-const workDir = join(tmpdir(), 'dsh_e2e');
-const profileDir = join(tmpdir(), 'dsh_e2e_prof');
-const SITE_PORT = 8188;
-const CDP_PORT = 9401;
+const workDir = join(tmpdir(), 'dsh_e2e_file');
+const profileDir = join(tmpdir(), 'dsh_e2e_file_prof');
+const CDP_PORT = 9412;
 
 const CHROME = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -34,16 +33,10 @@ const CHROME = [
 if (existsSync(workDir)) rmSync(workDir, { recursive: true, force: true });
 if (existsSync(profileDir)) rmSync(profileDir, { recursive: true, force: true });
 cpSync(join(repoRoot, 'src'), workDir, { recursive: true });
+mkdirSync(workDir, { recursive: true });
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml' };
-const server = createServer((req, res) => {
-  const rel = decodeURIComponent((req.url || '/').split('?')[0]).replace(/^\/+/, '');
-  const file = join(workDir, rel);
-  if (!file.startsWith(workDir) || !existsSync(file)) { res.writeHead(404).end('404'); return; }
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
-  res.end(readFileSync(file));
-});
-await new Promise((ok) => server.listen(SITE_PORT, '127.0.0.1', ok));
+// 用 file:// 打开，与用户双击 index.html 完全相同
+const pageUrl = 'file:///' + join(workDir, 'index.html').replace(/\\/g, '/');
 
 const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${CDP_PORT}`,
   `--user-data-dir=${profileDir}`, '--window-size=620,900', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
@@ -61,8 +54,7 @@ try {
     try { if ((await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`)).ok) break; } catch { /* retry */ }
     await sleep(200);
   }
-  const url = `http://127.0.0.1:${SITE_PORT}/index.html`;
-  const target = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })).json();
+  const target = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/new?${encodeURIComponent(pageUrl)}`, { method: 'PUT' })).json();
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((ok) => ws.addEventListener('open', ok, { once: true }));
 
@@ -83,25 +75,45 @@ try {
   await send('Page.enable');
   await evaluate(`window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); 'ok'`);
 
-  // 等页面就绪
+  // ★ 第一个断言就是"交互代码到底有没有跑起来"：
+  //   只有 calc-buttons.js 执行了，事件委托才挂上，tabIndex 才等于 -1。
+  let booted = false;
   for (let i = 0; i < 60; i++) {
-    if (await evaluate('document.getElementById("keys") && document.getElementById("keys").tabIndex === -1')) break;
+    if (await evaluate('document.getElementById("keys") && document.getElementById("keys").tabIndex === -1')) { booted = true; break; }
     await sleep(100);
   }
+  check('file:// 打开时交互代码已启动（按钮能点）', booted, true);
+
+  // 把页面错误打出来（出错时最有用的一条线索）
+  const pageErrs = await evaluate('JSON.stringify(window.__errs)');
+  if (pageErrs !== '[]') {
+    console.error('页面报错：' + pageErrs);
+  }
+
+  // 顺便确认调试视图已挂上，否则后面的断言会读到 undefined
+  check('调试视图 window.__debugExpression 可用', await evaluate('typeof window.__debugExpression'), 'string');
 
   /**
    * 读出当前表达式。
    *  - shown：界面上显示的样子（* 显示为 ×、/ 显示为 ÷、- 显示为 −）
    *  - raw  ：内部缓冲区的原始文本（ASCII 的 * / -），也就是将来要发给后端的那个字符串
    */
-  const state = async () => JSON.parse(await evaluate(`JSON.stringify({
-    shown: document.getElementById('expression').textContent.replace(/\\u200b/g,''),
-    raw: window.__debugExpression,
-    message: document.getElementById('message').textContent,
-    messageIsError: document.getElementById('message').classList.contains('is-error'),
-    result: document.getElementById('result').textContent,
-    resultIsPlaceholder: document.getElementById('result').classList.contains('is-placeholder'),
-  })`));
+  const state = async () => {
+    const raw = await evaluate(`JSON.stringify({
+      shown: document.getElementById('expression').textContent.replace(/\\u200b/g,''),
+      raw: typeof window.__debugExpression === 'string' ? window.__debugExpression : '(未定义)',
+      hasDebug: typeof window.__debugExpression,
+      message: document.getElementById('message').textContent,
+      messageIsError: document.getElementById('message').classList.contains('is-error'),
+      result: document.getElementById('result').textContent,
+      resultIsPlaceholder: document.getElementById('result').classList.contains('is-placeholder'),
+      errs: window.__errs,
+    })`);
+    if (typeof raw !== 'string') {
+      throw new Error('读取页面状态失败：' + JSON.stringify(raw));
+    }
+    return JSON.parse(raw);
+  };
 
   /** 用真实鼠标点击某个按键（走完整的事件链路） */
   const clickKey = async (key) => {
@@ -117,14 +129,10 @@ try {
     await sleep(45);
   };
 
-  /** 依次点击一串按键 */
   const clickAll = async (keys) => { for (const k of keys) await clickKey(k); };
-
   const clear = async () => { await clickKey('AC'); };
 
   // ---- 用例 ----
-  // 1. 每个按键都能点，且数字/运算符/括号/小数点都能进入表达式
-  //    断言用 raw（内部原始文本），因为界面会把 * / - 显示成 × ÷ −
   await clear();
   await clickAll(['1', '2', '+', '8']);
   check('点 1 2 + 8 后内部表达式', (await state()).raw, '12+8');
@@ -153,8 +161,7 @@ try {
   await clickAll(['3', '*', '-', '2']);
   check('一元负号内部表达式', (await state()).raw, '3*-2');
 
-  // ★ 表里分离：内部必须是 ASCII 的 * / -，界面才显示 × ÷ −
-  //   这条决定了表达式能不能直接发给后端（后端按 ASCII 解析）
+  // ★ 表里分离：内部必须是 ASCII 的 * / −，界面才显示 × ÷ −
   await clear();
   await clickAll(['5', '*', '8']);
   check('内部用 ASCII 的 *', (await state()).raw.includes('*'), true);
@@ -164,21 +171,21 @@ try {
   check('内部用 ASCII 的 /', (await state()).raw.includes('/'), true);
   check('界面显示 ÷', (await state()).shown.includes('÷'), true);
 
-  // 2. ± 键
+  // ± 键
   await clear();
   await clickAll(['5', 'NEG']);
   check('± 取负（内部）', (await state()).raw, '(-5)');
   await clickKey('NEG');
   check('± 再按一次还原', (await state()).raw, '5');
 
-  // 3. 退格与清空
+  // 退格与清空
   await clear();
   await clickAll(['1', '2', '3', 'BACK']);
   check('退格', (await state()).raw, '12');
   await clickKey('AC');
   check('AC 清空', (await state()).raw, '');
 
-  // 4. 非法输入被拦并给出提示
+  // 非法输入被拦并给出提示
   await clear();
   await clickKey('+');
   const afterPlus = await state();
@@ -189,7 +196,7 @@ try {
   await clickAll(['1', '.', '2', '.']);
   check('第二个小数点不写入', (await state()).raw, '1.2');
 
-  // 5. 等号：前端不得产生任何计算结果
+  // 等号：前端不得产生任何计算结果
   await clear();
   await clickAll(['1', '2', '+', '8', '=']);
   const afterEq = await state();
@@ -197,19 +204,15 @@ try {
   check('按 = 后结果仍为占位（前端不算）', afterEq.resultIsPlaceholder, true);
   check('按 = 后结果文字', afterEq.result, '后端未接通');
 
-  // 6. 全部 21 个按键逐个点一遍，确认没有"点了没反应"的键。
-  //    空表达式下 + - * / ) 本来就该被拒（这是输入规则），所以这些键单独处理：
-  //    有内容的表达式里点它们必须改变文本。
+  // 全部按键逐个点一遍
   const allKeys = JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-key]')].map(b => b.dataset.key))`));
   check('按键总数', allKeys.length, 21);
 
-  /** 空表达式下允许被拒绝的键（按输入规则） */
   const REJECTED_WHEN_EMPTY = new Set(['+', '*', '/', ')', '.', 'NEG', 'BACK', 'AC', '=']);
 
   await clear();
   for (const k of allKeys) {
     if (REJECTED_WHEN_EMPTY.has(k)) continue;
-    // 先在表达式里放一个数字，再点这个键，它就应该生效
     await clickKey('7');
     const before = (await state()).raw;
     await clickKey(k);
@@ -222,13 +225,11 @@ try {
     await clear();
   }
 
-  // 7. 页面无脚本错误
   check('页面脚本错误数', await evaluate('JSON.stringify(window.__errs)'), '[]');
 
   ws.close();
 } finally {
   chrome.kill();
-  server.close();
   await sleep(300);
   rmSync(workDir, { recursive: true, force: true });
   rmSync(profileDir, { recursive: true, force: true });
@@ -236,7 +237,7 @@ try {
 
 const total = passed + failures.length;
 if (failures.length === 0) {
-  console.log(`端到端点击测试全部通过：${passed}/${total}`);
+  console.log(`端到端点击测试全部通过（file:// 方式打开）：${passed}/${total}`);
   process.exit(0);
 }
 console.error(`端到端点击测试失败 ${failures.length} 项（共 ${total}）：`);
