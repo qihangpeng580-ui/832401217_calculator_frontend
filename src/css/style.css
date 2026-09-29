@@ -130,6 +130,7 @@ body {
 
 /* ---------- ⑤ 显示屏 ---------- */
 .screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -141,6 +142,23 @@ body {
   border-radius: 18px;
   text-align: right;
   overflow: hidden;
+}
+
+/* 显示屏左下的奶龙图案。
+   尺寸必须小于显示区高度的一半（显示区 118px 高，头像取 52px），
+   否则会顶到右侧的表达式文字（试过 76px，盖住数字了）。 */
+.screen__mascot {
+  position: absolute;
+  left: 4px;
+  bottom: 46px;
+  width: 52px;
+  height: 52px;
+  background: url('../assets/nailong-face.png') center/cover no-repeat;
+  border-radius: 50%;
+  opacity: .28;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .screen__expression {
@@ -234,16 +252,79 @@ body {
 }
 
 .key {
+  position: relative;
   height: 52px;
   padding: 0;
   font: inherit;
   font-size: 19px;
+  font-weight: 700;
   color: var(--key-text);
   background: var(--key-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius-key);
   cursor: pointer;
+  overflow: hidden;
   transition: background .12s, transform .06s, box-shadow .12s, border-color .12s;
+}
+
+/* ★ 按键底纹：奶龙小脸的角标图案
+   做法：把官方形象图裁成头像，并**逐像素把白色背景扣成透明**，
+        再以低不透明度贴在按键右下角。
+   为什么不用 mix-blend-mode 去白底：在浅色按键上 multiply 会把白底压成灰斑。
+   为什么不做大：按键只有 52px 高，头像超过约 26px 就会挤到数字。
+        所以取 22px、放右下角 —— 既看得出是奶龙，也不占符号的位置。
+   关键点：符号是按键的文字内容，绘制在伪元素**之上**，永远不会被底纹遮住。 */
+.key::before {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  background: url('../assets/nailong-face.png') center/cover no-repeat;
+  border-radius: 50%;
+  opacity: .5;
+  pointer-events: none;
+}
+
+/* 运算符键保持与数字键一致（都在右下角）：
+   运算符符号本身就在格子右侧，头像放右下能与之对齐成一条竖线，视觉更整齐。
+   功能键（AC/⌫/±/括号）则放左下，避免整排四个头像位置雷同。 */
+.key--fn::before {
+  right: auto;
+  left: 3px;
+}
+
+.key--fn:hover::before {
+  opacity: .72;
+}
+
+/* 悬停时底纹更清楚一点，作为"选中"的弱提示 */
+.key:hover::before {
+  opacity: .72;
+}
+
+/* 按下（含物理键盘触发）时头像完全显形，像"按到奶龙脸上" */
+.key.is-pressed::before {
+  opacity: .95;
+}
+
+.key:focus-visible {
+  outline: 3px solid rgba(143, 211, 244, .8);
+  outline-offset: 2px;
+}
+
+/* 等号是纯色按钮，底纹稍大稍淡，避免蓝色被压浑 */
+.key--eq::before {
+  width: 34px;
+  height: 34px;
+  right: 6px;
+  bottom: -4px;
+  opacity: .34;
+}
+
+.key--eq:hover::before {
+  opacity: .5;
 }
 
 /* 伪类：鼠标悬停 / 按住。这两条是纯 CSS 的"按下反馈"，不需要 JavaScript */
