@@ -93,9 +93,15 @@
     </aside>
   </main>
 
-  <!-- 模块之间通过 DOM 上的 id 通信，不互相 import，避免循环依赖 -->
-  <script type="module" src="js/ui.js"></script>
-  <script type="module" src="js/keyboard.js"></script>
-  <script type="module" src="js/calc-buttons.js"></script>
+  <!--
+    ★ 这里加载的是**传统脚本** bundle.js，而不是 ES 模块，原因是：
+      浏览器在 file:// 页面里不执行 <script type="module">，
+      双击打开本文件时模块会被跨域策略拒绝，所有交互都不生效
+      （页面看起来正常，但点按钮毫无反应 —— 真实踩过这个坑）。
+
+    bundle.js 由 tools/build-bundle.mjs 从 src/js/ 下的四个模块合并生成。
+    改逻辑请改源文件，然后运行：node tools/build-bundle.mjs
+  -->
+  <script src="js/bundle.js"></script>
 </body>
 </html>
