@@ -134,7 +134,9 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  min-height: 118px;
+  /* 高度要能容下"表达式行 + 结果行 + 提示条 + 后端状态丸"四行，
+     否则提示文字会被挤到换行（截图里踩过）。 */
+  min-height: 138px;
   margin-bottom: 16px;
   padding: 14px 16px;
   background: var(--screen-bg);
