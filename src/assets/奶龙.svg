@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 280" width="300" height="280"
+     role="img" aria-label="奶龙">
+  <title>奶龙</title>
+
+  <defs>
+    <!-- 皮肤渐变：上亮下暖，让圆滚滚的身体有体积感 -->
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFDA6B"/>
+      <stop offset="55%"  stop-color="#FFC63D"/>
+      <stop offset="100%" stop-color="#F2A21F"/>
+    </linearGradient>
+    <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFF7E0"/>
+      <stop offset="100%" stop-color="#FBE1A2"/>
+    </linearGradient>
+    <radialGradient id="iris" cx="50%" cy="36%" r="64%">
+      <stop offset="0%"   stop-color="#9BE455"/>
+      <stop offset="68%"  stop-color="#3FA63A"/>
+      <stop offset="100%" stop-color="#1E7A2C"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 尾巴：从身体左后方伸出的粗尾巴，尾尖朝左下弯 -->
+  <path d="M78 232q-34 2-40-28t12-42" fill="none" stroke="#F2A21F" stroke-width="20"
+        stroke-linecap="round"/>
+
+  <!-- 两条手臂先画，这样根部会被身体和头压住，看起来是"长在身上"的 -->
+  <g fill="none" stroke="#FBC23A" stroke-width="26" stroke-linecap="round">
+    <path d="M104 176 60 122"/>
+    <path d="M196 176l44-54"/>
+  </g>
+
+  <!-- 身体：圆滚滚，比头略小（奶龙是大头小身的比例） -->
+  <ellipse cx="150" cy="192" rx="62" ry="60" fill="url(#skin)"/>
+
+  <!-- 两条粗短的腿 -->
+  <rect x="110" y="234" width="32" height="28" rx="13" fill="#F7AB25"/>
+  <rect x="158" y="234" width="32" height="28" rx="13" fill="#F7AB25"/>
+
+  <!-- 脚爪：深棕色小三角，每只脚三个 -->
+  <g fill="#7A4A20">
+    <path d="M114 259l3.4-8 3.4 8z"/><path d="M122.5 260l3.4-8 3.4 8z"/><path d="M131 259l3.4-8 3.4 8z"/>
+    <path d="M162 259l3.4-8 3.4 8z"/><path d="M170.5 260l3.4-8 3.4 8z"/><path d="M179 259l3.4-8 3.4 8z"/>
+  </g>
+
+  <!-- 浅色大肚子 -->
+  <ellipse cx="150" cy="198" rx="40" ry="42" fill="url(#belly)"/>
+
+  <!-- 两只举高的手掌，位置明显高过头顶下方，看得清 -->
+  <ellipse cx="58"  cy="118" rx="15" ry="16.5" fill="#FFCB3D"/>
+  <ellipse cx="242" cy="118" rx="15" ry="16.5" fill="#FFCB3D"/>
+
+  <!-- 手指爪 -->
+  <g fill="#7A4A20">
+    <path d="M49 111l2.8-7.5 2.8 7.5z"/><path d="M58 107l2.8-7.5 2.8 7.5z"/>
+    <path d="M67 111l2.8-7.5 2.8 7.5z"/>
+    <path d="M233 111l2.8-7.5 2.8 7.5z"/><path d="M242 107l2.8-7.5 2.8 7.5z"/>
+    <path d="M251 111l2.8-7.5 2.8 7.5z"/>
+  </g>
+
+  <!-- 脑袋：大而圆，压在身上 -->
+  <ellipse cx="150" cy="88" rx="82" ry="80" fill="url(#skin)"/>
+  <!-- 头顶高光 -->
+  <ellipse cx="120" cy="36" rx="30" ry="15" fill="#FFEFB8" opacity=".5"/>
+
+  <!-- 绿色圆眼睛：眼白 → 绿色虹膜 → 黑瞳孔 → 两个高光 -->
+  <g>
+    <ellipse cx="119" cy="88" rx="16" ry="17" fill="#FFFFFF"/>
+    <ellipse cx="119" cy="89" rx="13" ry="14" fill="url(#iris)"/>
+    <ellipse cx="119" cy="90" rx="7" ry="8" fill="#14261A"/>
+    <circle cx="113.8" cy="83" r="4" fill="#FFFFFF"/>
+    <circle cx="124"   cy="95" r="2" fill="#FFFFFF" opacity=".85"/>
+  </g>
+  <g>
+    <ellipse cx="181" cy="88" rx="16" ry="17" fill="#FFFFFF"/>
+    <ellipse cx="181" cy="89" rx="13" ry="14" fill="url(#iris)"/>
+    <ellipse cx="181" cy="90" rx="7" ry="8" fill="#14261A"/>
+    <circle cx="175.8" cy="83" r="4" fill="#FFFFFF"/>
+    <circle cx="186"   cy="95" r="2" fill="#FFFFFF" opacity=".85"/>
+  </g>
+
+  <!-- 鼻子：很小的一颗黑椭圆。奶龙的嘴巴被鼻子挡住，所以不画嘴 -->
+  <ellipse cx="150" cy="116" rx="5.5" ry="4.5" fill="#2B2118"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="88"  cy="110" rx="12" ry="7" fill="#FF9E6B" opacity=".28"/>
+  <ellipse cx="212" cy="110" rx="12" ry="7" fill="#FF9E6B" opacity=".28"/>
+</svg>

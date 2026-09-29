@@ -11,55 +11,14 @@
   <main class="app">
     <section class="calc" aria-label="计算器">
       <!--
-        吉祥物：奶龙。
-        用**内联 SVG 手绘**，不引用任何外部图片文件 —— 所以不联网也能显示，
-        也不需要从网上下载任何素材（既避免安全风险，也没有版权问题）。
+        吉祥物：奶龙（Nailong）。
+        用**自己手绘的 SVG 文件**（src/assets/奶龙.svg），不引用任何官方图片素材：
+        不联网也能显示，不需要从网上下载图片，也不涉及他人素材的版权问题。
       -->
-      <div class="calc__mascot" aria-hidden="true">
-        <svg class="mascot" viewBox="0 0 240 172">
-          <defs>
-            <linearGradient id="earShade" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="100%" stop-color="#eaf5fc"/>
-            </linearGradient>
-          </defs>
-
-          <!-- 卷卷的小尾巴 -->
-          <path d="M196 128c12 0 20-7 20-17s-9-17-18-14-13 12-9 19"
-                fill="none" stroke="#e3eef8" stroke-width="9" stroke-linecap="round"/>
-
-          <!-- 两只长耳朵：从头顶向上再向外弯，耳尖自然垂下来 -->
-          <path d="M92 62C70 60 52 78 50 106c-2 25 9 40 21 41 11 1 17-9 17-25 0-20 6-46 12-60z"
-                fill="url(#earShade)" stroke="#e0ecf7" stroke-width="2"/>
-          <path d="M148 62c22-2 40 16 42 44 2 25-9 40-21 41-11 1-17-9-17-25 0-20-6-46-12-60z"
-                fill="url(#earShade)" stroke="#e0ecf7" stroke-width="2"/>
-
-          <!-- 脑袋 -->
-          <circle cx="120" cy="86" r="48" fill="#ffffff" stroke="#e0ecf7" stroke-width="2"/>
-
-          <!-- 圆眼睛（带一点高光） -->
-          <ellipse cx="103" cy="88" rx="6" ry="7.5" fill="#3d4f6b"/>
-          <ellipse cx="137" cy="88" rx="6" ry="7.5" fill="#3d4f6b"/>
-          <circle cx="105" cy="85" r="2.2" fill="#ffffff"/>
-          <circle cx="139" cy="85" r="2.2" fill="#ffffff"/>
-
-          <!-- 腮红 -->
-          <ellipse cx="88" cy="101" rx="10" ry="6.5" fill="#ffd3dd" opacity=".85"/>
-          <ellipse cx="152" cy="101" rx="10" ry="6.5" fill="#ffd3dd" opacity=".85"/>
-
-          <!-- 小嘴：一条浅浅的 w -->
-          <path d="M113 101q7 8 14 0" fill="none" stroke="#c9d8e8" stroke-width="2.4"
-                stroke-linecap="round"/>
-
-          <!-- 左耳上的蓝色小蝴蝶结 -->
-          <g transform="translate(58 96) rotate(-16)">
-            <path d="M0 0l-12-8v16z" fill="#9ad9f5"/>
-            <path d="M0 0l12-8v16z" fill="#9ad9f5"/>
-            <circle cx="0" cy="0" r="3.6" fill="#7fc9ee"/>
-          </g>
-        </svg>
+      <div class="calc__mascot">
+        <img class="mascot" src="assets/奶龙.svg" alt="奶龙">
       </div>
-      <h1 class="calc__title">奶油计算器</h1>
+      <h1 class="calc__title">奶龙计算器</h1>
 
       <!-- 显示屏：表达式行 + 结果行 + 提示条 + 后端状态 -->
       <div class="screen">
@@ -108,20 +67,8 @@
 
     <!-- 历史记录：本轮为占位区，按要求不放任何假数据 -->
     <aside class="history" aria-label="计算历史">
-      <!-- 历史卡片右上角的小奶龙：同一套画法，缩小复用 -->
-      <svg class="history__mascot" viewBox="0 0 240 172" aria-hidden="true">
-        <circle cx="120" cy="90" r="52" fill="#ffffff" stroke="#e6f1fa" stroke-width="3"/>
-        <path d="M88 66C64 64 46 84 44 114c-2 26 10 42 22 43 11 1 17-10 17-26 0-21 6-49 5-65z"
-              fill="#f2f9ff" stroke="#e6f1fa" stroke-width="3"/>
-        <path d="M152 66c24-2 42 18 44 48 2 26-10 42-22 43-11 1-17-10-17-26 0-21-6-49-5-65z"
-              fill="#f2f9ff" stroke="#e6f1fa" stroke-width="3"/>
-        <ellipse cx="101" cy="92" rx="6" ry="8" fill="#3d4f6b"/>
-        <ellipse cx="139" cy="92" rx="6" ry="8" fill="#3d4f6b"/>
-        <ellipse cx="86" cy="106" rx="10" ry="6" fill="#ffd3dd" opacity=".9"/>
-        <ellipse cx="154" cy="106" rx="10" ry="6" fill="#ffd3dd" opacity=".9"/>
-        <path d="M112 106q8 8 16 0" fill="none" stroke="#c9d8e8" stroke-width="3"
-              stroke-linecap="round"/>
-      </svg>
+      <!-- 历史卡片右上角的小奶龙：同一张图缩小复用 -->
+      <img class="history__mascot" src="assets/奶龙.svg" alt="">
       <h2 class="history__title">计算历史</h2>
       <p class="history__placeholder">
         此区域将显示来自后端数据库的历史记录。<br>
