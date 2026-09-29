@@ -1,0 +1,16 @@
+# Editor and system temporary files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Temporary artifacts and user data directories from the screenshot tools
+.dsh_calc*/
+*.tmp
+
+# No dependencies yet; exclude the usual dependency directories so they are not committed by accident
+node_modules/
