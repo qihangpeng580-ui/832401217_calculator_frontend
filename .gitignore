@@ -1,0 +1,16 @@
+# 编辑器和系统临时文件
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# 日志
+*.log
+
+# 截图工具的临时产物与用户数据目录
+.dsh_calc*/
+*.tmp
+
+# 本轮尚无依赖，先把常见依赖目录排除，避免以后误提交
+node_modules/

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>计算器 · 832401217</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 整页只有一个主区域：左侧计算器，右侧历史记录占位 -->
+  <main class="app">
+    <section class="calc" aria-label="计算器">
+      <!-- 显示屏：表达式行 + 结果行 + 提示条 + 后端状态 -->
+      <div class="screen">
+        <p class="screen__expression is-empty" id="expression" data-placeholder="输入表达式"></p>
+        <p class="screen__result" id="result">—</p>
+        <p class="screen__message" id="message" role="status" aria-live="polite"></p>
+        <p class="screen__backend" id="backend-status">
+          <span class="screen__dot" aria-hidden="true"></span>
+          <span id="backend-text">后端未启用 · 结果由后端计算</span>
+        </p>
+      </div>
+
+      <!--
+        键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
+        每个按键用 data-key 声明语义，HTML 不写任何 onclick。
+      -->
+      <div class="keys" id="keys">
+        <button type="button" class="key key--fn" data-key="AC"   title="清空（Esc）">AC</button>
+        <button type="button" class="key key--fn" data-key="BACK" title="退格（Backspace）">⌫</button>
+        <button type="button" class="key key--fn" data-key="NEG"  title="正负号（n）">±</button>
+        <button type="button" class="key key--fn" data-key="("    title="左括号">(</button>
+
+        <button type="button" class="key" data-key="7">7</button>
+        <button type="button" class="key" data-key="8">8</button>
+        <button type="button" class="key" data-key="9">9</button>
+        <button type="button" class="key key--fn" data-key=")" title="右括号">)</button>
+
+        <button type="button" class="key" data-key="4">4</button>
+        <button type="button" class="key" data-key="5">5</button>
+        <button type="button" class="key" data-key="6">6</button>
+        <button type="button" class="key key--op" data-key="+" title="加（+）">+</button>
+
+        <button type="button" class="key" data-key="1">1</button>
+        <button type="button" class="key" data-key="2">2</button>
+        <button type="button" class="key" data-key="3">3</button>
+        <button type="button" class="key key--op" data-key="-" title="减（-）">−</button>
+
+        <button type="button" class="key" data-key="0">0</button>
+        <button type="button" class="key" data-key="." title="小数点">.</button>
+        <button type="button" class="key key--op" data-key="*" title="乘（*）">×</button>
+        <button type="button" class="key key--op" data-key="/" title="除（/）">÷</button>
+
+        <button type="button" class="key key--wide key--eq" data-key="=" title="计算（Enter / =）">=</button>
+      </div>
+    </section>
+
+    <!-- 历史记录：本轮为占位区，按要求不放任何假数据 -->
+    <aside class="history" aria-label="计算历史">
+      <h2 class="history__title">计算历史</h2>
+      <p class="history__placeholder">
+        此区域将显示来自后端数据库的历史记录。<br>
+        本轮只完成前端界面与交互，历史记录需等前后端联调阶段接入。
+      </p>
+    </aside>
+  </main>
+
+  <!-- 模块之间通过 DOM 上的 id 通信，不互相 import，避免循环依赖 -->
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/keyboard.js"></script>
+  <script type="module" src="js/calc-buttons.js"></script>
+</body>
+</html>
