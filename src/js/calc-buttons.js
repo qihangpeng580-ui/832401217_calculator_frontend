@@ -119,5 +119,20 @@ keysEl.addEventListener('click', (event) => {
 // 键盘区容器需要可获得焦点，上面的 focus() 才有意义
 keysEl.tabIndex = -1;
 
+/**
+ * 只读调试视图：把内部缓冲区的**原始文本**暴露给自动化测试。
+ *
+ * 为什么需要它：界面把 * / - 显示成 × ÷ −（表里分离），
+ * 所以测试如果只读界面文本，就分辨不出"内部到底存的是 ASCII 还是界面符号" ——
+ * 而这决定了表达式能不能直接发给后端。测试里踩过这个坑。
+ *
+ * 这里只提供 getter，没有任何写入入口，
+ * 因此不会变成"绕过输入校验直接改表达式"的后门。
+ */
+Object.defineProperty(window, '__debugExpression', {
+  get: () => state.text,
+  configurable: true,
+});
+
 // 首屏渲染
 ui.render(state, display);
