@@ -671,7 +671,9 @@ function evaluate() {
   }
   state = {
     ...state,
-    message: '表达式已就绪，但后端尚未接通 —— 本阶段前端不产生计算结果',
+    // 文案要短：显示屏里的提示条一行约能放下 20 个汉字，
+    // 太长会折成三行把显示屏撑挤（截图里踩过）。
+    message: '后端未接通，本阶段不产生结果',
     messageType: 'hint',
   };
   ui.render(state, display);
