@@ -37,6 +37,15 @@
         键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
         每个按键用 data-key 声明语义，HTML 不写任何 onclick。
       -->
+      <!--
+        键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
+        每个按键用 data-key 声明语义，HTML 不写任何 onclick。
+
+        按键排布按"每行一个职责"组织，颜色分组与之一致：
+          第 1 行  功能键（粉色）   AC ⌫ ± ( )
+          第 2-5 行 数字 + 运算符   7 8 9 + ／ 4 5 6 − ／ 1 2 3 × ／ 0 . ÷
+          第 6 行  等号（蓝色实心，整行）
+      -->
       <div class="keys" id="keys">
         <button type="button" class="key key--fn" data-key="AC"   title="清空（Esc）">AC</button>
         <button type="button" class="key key--fn" data-key="BACK" title="退格（Backspace）">⌫</button>
@@ -46,22 +55,22 @@
         <button type="button" class="key" data-key="7">7</button>
         <button type="button" class="key" data-key="8">8</button>
         <button type="button" class="key" data-key="9">9</button>
-        <button type="button" class="key key--fn" data-key=")" title="右括号">)</button>
+        <button type="button" class="key key--op" data-key="+" title="加（+）">+</button>
 
         <button type="button" class="key" data-key="4">4</button>
         <button type="button" class="key" data-key="5">5</button>
         <button type="button" class="key" data-key="6">6</button>
-        <button type="button" class="key key--op" data-key="+" title="加（+）">+</button>
+        <button type="button" class="key key--op" data-key="-" title="减（-）">−</button>
 
         <button type="button" class="key" data-key="1">1</button>
         <button type="button" class="key" data-key="2">2</button>
         <button type="button" class="key" data-key="3">3</button>
-        <button type="button" class="key key--op" data-key="-" title="减（-）">−</button>
+        <button type="button" class="key key--op" data-key="*" title="乘（*）">×</button>
 
         <button type="button" class="key" data-key="0">0</button>
         <button type="button" class="key" data-key="." title="小数点">.</button>
-        <button type="button" class="key key--op" data-key="*" title="乘（*）">×</button>
         <button type="button" class="key key--op" data-key="/" title="除（/）">÷</button>
+        <button type="button" class="key key--fn" data-key=")" title="右括号">)</button>
 
         <button type="button" class="key key--wide key--eq" data-key="=" title="计算（Enter / =）">=</button>
       </div>
