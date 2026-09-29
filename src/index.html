@@ -22,6 +22,8 @@
 
       <!-- 显示屏：表达式行 + 结果行 + 提示条 + 后端状态 -->
       <div class="screen">
+        <!-- 显示屏左下的奶龙图案（纯装饰，用 CSS 背景图实现，不参与交互） -->
+        <span class="screen__mascot" aria-hidden="true"></span>
         <p class="screen__expression is-empty" id="expression" data-placeholder="输入表达式"></p>
         <p class="screen__result" id="result">—</p>
         <p class="screen__message" id="message" role="status" aria-live="polite"></p>
