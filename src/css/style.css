@@ -244,11 +244,13 @@ body {
   background: #dcc9a6;
 }
 
-/* ---------- ⑥ 键盘：4 列网格 ---------- */
+/* ---------- ⑥ 键盘：5 列网格 ---------- */
+/* 为什么是 5 列：按键共 21 个 = 5×4 + 1（等号独占一行）。
+   列数必须能整除前 20 个键，否则会出现"某行只剩一个键、整块错位"（4 列时踩过）。 */
 .keys {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
 }
 
 .key {
