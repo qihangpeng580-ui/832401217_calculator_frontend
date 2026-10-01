@@ -1,15 +1,27 @@
 /**
- * 打包脚本：把 src/js 下的四个 ES 模块合并成一个「传统脚本」
+ * 打包脚本：把 src/js 下的 ES 模块合并成一个「传统脚本」
  * （tools/build-bundle.mjs）
  *
- * 运行：node tools/build-bundle.mjs
- * 产物：src/js/bundle.js（生成物，不要手工编辑）
+ * 运行：
+ *   node tools/build-bundle.mjs
+ *   node tools/build-bundle.mjs --js-dir <目录>    打包另一个目录里的源码
+ *   node tools/build-bundle.mjs --out <文件>       指定产物路径
  *
- * ★ 为什么需要它：
+ * 产物默认：src/js/bundle.js（生成物，不要手工编辑）
+ *
+ * ★ --js-dir 是给谁用的：
+ *   截图工具（capture-screens.mjs）会把 src/ 复制到临时目录，
+ *   把那里的后端地址改成临时后端的端口，然后**在那个副本里重新打包** ——
+ *   这样既不会污染仓库，截出来的图又是真的连着后端跑的。
+ *   没有这个参数的话，副本就得伪造出 "根目录/src/js" 的结构，
+ *   很别扭而且容易出错（试过，路径算错过两次）。
+ *
+ * ★ 为什么需要打包：
  *   浏览器在 file:// 页面里**不执行 ES 模块** ——
  *   双击打开 index.html 时 `import` 会被拒绝，交互代码全都不运行，
  *   页面看起来正常、点按钮却毫无反应（真实踩过）。
  *   打包成传统脚本后，双击即可使用。
+ *   （联网部署到 GitHub Pages 时同样用它，保证本地和线上的行为一致。）
  *
  * 做法：每个源文件包一层 IIFE，避免同名变量冲突
  *      （曾经 ui.js 与 calc-buttons.js 都有 keysEl，拼在一起直接报重复声明）；
@@ -18,28 +30,72 @@
  *        const model = (function (参数) { 源码; return { 导出 }; })(上游导出);
  *        const ui    = (function (参数) { 源码; return { 导出 }; })(上游导出);
  *
- *      ★ 关键点（踩过）：IIFE 的**实参**必须是"上游模块的导出"，
- *        而不是"本模块自己导出的名字"。
- *        一开始把本模块的导出也塞进实参，产物里就出现了
- *        `})(createState, applyKey, ...)` 这种引用不存在变量的写法，
- *        整个 bundle 抛 ReferenceError: createState is not defined。
+ *      ★ 关键点（踩过三次）：
+ *        ① IIFE 的**实参**必须是"上游模块的导出"，而不是"本模块自己导出的名字"。
+ *           一开始把本模块导出的名字也塞进实参，产物里就出现了
+ *           `})(createState, applyKey, ...)` 这种引用不存在变量的写法，
+ *           整个 bundle 抛 ReferenceError: createState is not defined。
+ *        ② **顺序即依赖**。每个源文件里的顶层语句在 IIFE 执行时立刻运行，
+ *           所以如果一个模块在顶层引用了另一个模块的函数，那个函数必须
+ *           已经在 needs 里、并且被上游导出过。boot.js 放在最后就是这个道理。
+ *        ③ **模块内部不能用命名空间写法**。依赖是以函数参数传进去的，
+ *           所以源码里只能写 `render(...)`，不能写 `ui.render(...)` ——
+ *           后者在 IIFE 里解析不到 ui 这个名字（踩过，整包不执行）。
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
-const jsDir = join(repoRoot, 'src', 'js');
-const outFile = join(jsDir, 'bundle.js');
+
+/** 解析命令行参数 */
+function parseArgs(argv) {
+  const options = { jsDir: null, out: null };
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === '--js-dir' && argv[i + 1]) {
+      options.jsDir = argv[i + 1];
+      i += 1;
+    } else if (argv[i] === '--out' && argv[i + 1]) {
+      options.out = argv[i + 1];
+      i += 1;
+    }
+  }
+  return options;
+}
+
+const options = parseArgs(process.argv.slice(2));
+
+const jsDir = options.jsDir
+  ? (isAbsolute(options.jsDir) ? options.jsDir : resolve(process.cwd(), options.jsDir))
+  : join(repoRoot, 'src', 'js');
+
+const outFile = options.out
+  ? (isAbsolute(options.out) ? options.out : resolve(process.cwd(), options.out))
+  : join(jsDir, 'bundle.js');
 
 /**
  * 模块定义，顺序 = 依赖顺序（后者可用前者的导出）。
- * exports：本模块对外暴露的名字（会成为打包作用域里的变量）
- * needs  ：本模块要用到的、上游已导出的名字（作为 IIFE 参数传入）
+ *
+ * file    源文件名
+ * binding 本模块在打包作用域里的变量名（null 表示不需要导出）
+ * exports 本模块对外暴露的名字（会成为打包作用域里的变量，供后续模块引用）
+ * needs   本模块要用到的、上游已导出的名字（作为 IIFE 参数传入）
  */
 const MODULES = [
+  {
+    file: 'config.js',
+    binding: 'config',
+    exports: ['API_BASE_URL', 'REQUEST_TIMEOUT_MS', 'HISTORY_PAGE_SIZE', 'HISTORY_EXPRESSION_MAX_LENGTH'],
+    needs: [],
+  },
+  {
+    file: 'api.js',
+    binding: 'api',
+    exports: ['ApiError', 'calculate', 'fetchHistory', 'deleteHistory', 'clearHistory', 'checkHealth', 'API_BASE_URL_FOR_TEST'],
+    needs: ['API_BASE_URL', 'REQUEST_TIMEOUT_MS'],
+  },
   {
     file: 'input-model.js',
     binding: 'model',
@@ -49,20 +105,50 @@ const MODULES = [
   {
     file: 'ui.js',
     binding: 'ui',
-    exports: ['toDisplayText', 'render', 'flashKey', 'setArmedOperator', 'setBackendStatus', 'showMessage', 'showServerError'],
+    exports: ['toDisplayText', 'render', 'flashKey', 'setArmedOperator', 'setBackendStatus', 'setBackendDot', 'showMessage', 'showServerError'],
     needs: [],
+  },
+  {
+    file: 'history.js',
+    binding: 'history',
+    exports: ['setDeleteHandler', 'setStatus', 'renderList', 'clearList'],
+    needs: ['HISTORY_EXPRESSION_MAX_LENGTH'],
   },
   {
     file: 'calc-buttons.js',
     binding: 'buttons',
-    exports: ['handleKey'],
+    exports: ['setSubmitHandler', 'setResult', 'setMessage', 'getExpression', 'handleKey'],
+    // ★ 注意：只传用到的**函数名**，不传 ui 这个命名空间对象。
+    //   因为模块源码里写的是 render(...) 而不是 ui.render(...) ——
+    //   IIFE 里解析不到 ui 这个名字。这一点踩过一次：
+    //   源码用了 ui.render()，打包后 ui 在 IIFE 内部是未定义的，整包报错。
     needs: ['createState', 'applyKey', 'canSubmit', 'render', 'setArmedOperator', 'flashKey'],
   },
   {
+    file: 'app.js',
+    binding: 'app',
+    exports: ['boot'],
+    // app.js 顶层会调用 setSubmitHandler / setDeleteHandler 等（在 boot 函数体内），
+    // 所以这些名字必须在需要时可用 —— 全部列出来，宁可多不可少。
+    needs: [
+      'calculate', 'fetchHistory', 'deleteHistory', 'clearHistory', 'checkHealth', 'API_BASE_URL_FOR_TEST',
+      'render', 'setBackendStatus', 'setBackendDot', 'showServerError',
+      'setDeleteHandler', 'setStatus', 'renderList', 'clearList',
+      'setSubmitHandler', 'setResult', 'setMessage', 'getExpression',
+      'HISTORY_PAGE_SIZE',
+    ],
+  },
+  {
     file: 'keyboard.js',
-    binding: null, // 最后一个模块只执行，不需要导出
+    binding: null, // 只执行（在顶层注册 keydown 监听器），不需要导出
     exports: [],
     needs: ['handleKey'],
+  },
+  {
+    file: 'boot.js',
+    binding: null, // 最后执行：顶层就会调用 app.boot()
+    exports: [],
+    needs: ['boot'],
   },
 ];
 
@@ -119,7 +205,7 @@ for (const mod of MODULES) {
 
 const banner = `/**
  * ⚠ 生成物 —— 请勿手工编辑。
- * 由 tools/build-bundle.mjs 从 src/js/ 下的四个 ES 模块合并而来。
+ * 由 tools/build-bundle.mjs 从 src/js/ 下的 ES 模块合并而来。
  * 改逻辑请改源文件，然后运行：node tools/build-bundle.mjs
  *
  * 存在的理由：浏览器在 file:// 页面里不执行 ES 模块，
@@ -128,23 +214,27 @@ const banner = `/**
 `;
 
 // 额外暴露一个只读接口给自动化测试与截图工具使用。
-// 只暴露"设置状态并渲染"这一层，不暴露任何写入表达式的能力，
+// 只暴露"读状态"和"设置显示"这一层，不暴露任何写入表达式的能力，
 // 因此不会变成绕过输入校验的后门。
 const debugBridge = `
-  /* 自动化测试与截图工具用的只读接口（见 tools/e2e-click.mjs、tools/shot-seed.js） */
+  /* 自动化测试与截图工具用的只读接口（见 tools/e2e-click.mjs、tools/verify-deployed.mjs） */
   window.__calc = {
-    createState,
-    applyKey,
-    render,
-    setArmedOperator,
-    flashKey,
-    showServerError,
+    createState: model.createState,
+    applyKey: model.applyKey,
+    render: ui.render,
+    setArmedOperator: ui.setArmedOperator,
+    flashKey: ui.flashKey,
+    showServerError: ui.showServerError,
+    /* 交互代码是否已启动 —— e2e 测试的第一条断言就是它 */
     isBooted: () => document.getElementById('keys') !== null && document.getElementById('keys').tabIndex === -1,
-    getExpression: () => state,
+    /* 当前表达式（ASCII 原文，供测试判断表里分离是否正确） */
+    getExpression: buttons.getExpression,
+    /* 后端地址（供测试断言配置被正确读取） */
+    getApiBaseUrl: () => api.API_BASE_URL_FOR_TEST,
   };
 `;
 
 const bundle = `${banner}(function () {\n  'use strict';\n\n${pieces.join('\n\n')}\n\n${debugBridge}\n})();\n`;
 
 writeFileSync(outFile, bundle, 'utf8');
-console.log(`已生成 ${outFile}（${(bundle.length / 1024).toFixed(1)} KB）`);
+console.log(`已生成 ${outFile}（${(bundle.length / 1024).toFixed(1)} KB，${MODULES.length} 个模块）`);
