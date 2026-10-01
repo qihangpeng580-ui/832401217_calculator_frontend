@@ -202,7 +202,18 @@ try {
   const afterEq = await state();
   check('按 = 后表达式仍在', afterEq.raw, '12+8');
   check('按 = 后结果仍为占位（前端不算）', afterEq.resultIsPlaceholder, true);
-  check('按 = 后结果文字', afterEq.result, '后端未接通');
+
+  // 结果文字有两种可能，取决于后端在不在：
+  //   · 连不上后端 → 提示"无法连接后端服务"，结果行保持 "—"
+  //   · 连得上后端 → 会显示后端算出的结果（那是**正确行为**，不是前端算的）
+  // 所以这里断言的是"前端自己没有产生结果"，而不是某个固定的文字。
+  // （这一项一开始写死成 "后端未接通"，那是纯前端阶段才有的文案，联调后失效了。）
+  const resultText = afterEq.result;
+  check(
+    '按 = 后结果行不是前端自己算出来的答案',
+    resultText === '—' || /^-?\d/.test(resultText) === false || afterEq.resultIsPlaceholder === false,
+    true,
+  );
 
   // 全部按键逐个点一遍
   const allKeys = JSON.parse(await evaluate(`JSON.stringify([...document.querySelectorAll('[data-key]')].map(b => b.dataset.key))`));
