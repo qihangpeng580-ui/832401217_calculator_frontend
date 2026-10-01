@@ -411,31 +411,214 @@ body {
   cursor: not-allowed;
 }
 
+/*
+ * 键盘区容器被聚焦时**不要**画默认焦点框。
+ *
+ * 背景：容器设了 tabIndex = -1，使它可以被脚本 focus()（这是为了修掉
+ *      "按回车重复上一次按键"的怪现象 —— 焦点必须离开按钮）。
+ *      但浏览器默认会给被聚焦的元素画一圈黑框，于是每点一次按钮，
+ *      整个键盘区外面就多一圈很显眼的黑边（截图里看到的）。
+ *
+ * 为什么这里可以直接用 :focus 而不是 :focus-visible：
+ *      容器本身不是可操作元素（用户不会拿它触发任何动作，它只是事件委托的挂载点），
+ *      所以任何情况下都不需要焦点提示。真正需要焦点提示的是里面的**按钮**，
+ *      它们的 :focus-visible 规则在下面。
+ */
+.keys:focus,
+.keys:focus-visible {
+  outline: none;
+}
+
 .key:focus-visible {
   outline: 3px solid rgba(143, 211, 244, .8);
   outline-offset: 2px;
 }
 
-/* ---------- ⑦ 历史记录占位区 ---------- */
+/* ---------- ⑦ 历史记录（数据来自后端数据库） ---------- */
 .history {
-  min-height: 200px;
-  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* 固定高度 + 列表内部滚动：
+     历史条数没有上限，如果让卡片跟着长，页面会被拉得很长，
+     计算器本身反而被挤到看不见了。 */
+  height: 460px;
+  padding: 18px 20px 16px;
   background: var(--card-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   box-shadow: 0 16px 36px rgba(120, 150, 200, .13);
 }
 
+.history__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .history__title {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
 }
 
-.history__placeholder {
+/* "共 N 条" / "显示 20 / 共 35 条" */
+.history__count {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ---------- 搜索与清空 ---------- */
+.history__search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.history__input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--screen-bg);
+  border: 1px solid var(--screen-border);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.history__input::placeholder {
+  color: var(--text-dim);
+}
+
+.history__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(143, 211, 244, .32);
+}
+
+.history__clear {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--fn-text);
+  background: var(--fn-bg);
+  border: 1px solid var(--fn-border);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: filter .15s ease;
+}
+
+.history__clear:hover {
+  filter: brightness(.96);
+}
+
+/* ---------- 列表 ---------- */
+.history__list {
+  flex: 1;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 滚动条细一点，不要抢视觉 */
+.history__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history__list::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+.history__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-bottom: 6px;
+  background: var(--screen-bg);
+  border: 1px solid var(--screen-border);
+  border-radius: 10px;
+}
+
+.history__main {
+  min-width: 0; /* 让长表达式能被截断而不是把卡片撑破 */
+}
+
+.history__expression {
   margin: 0;
   font-size: 13px;
-  line-height: 22px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.history__result {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-strong, #3f9ed6);
+  word-break: break-all;
+}
+
+.history__meta {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.history__time {
+  font-size: 11px;
   color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.history__delete {
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--danger-text, #d6455f);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.history__delete:hover {
+  background: var(--danger-bg, #ffe8ec);
+  border-color: var(--danger-border, #ffc2cd);
+}
+
+.history__delete:disabled {
+  cursor: default;
+  opacity: .5;
+}
+
+/* ---------- 空状态 / 加载中 / 错误 ---------- */
+.history__status {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--text-dim);
+}
+
+.history__status.is-error {
+  color: var(--danger-text, #d6455f);
+}
+
+/* 列表为空时，提示文字应该顶到上面，而不是被 flex 挤到底部 */
+.history__list:empty + .history__status {
+  margin-top: 0;
 }
