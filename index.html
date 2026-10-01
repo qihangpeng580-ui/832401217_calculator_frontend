@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>计算器 · 832401217</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 整页只有一个主区域：左侧计算器，右侧历史记录占位 -->
+  <main class="app">
+    <section class="calc" aria-label="计算器">
+      <!--
+        吉祥物：奶龙（Nailong）。
+        图片来源：第七印象官方网站（nailoong.com）「IP大明星 → 奶龙」页面的形象图，
+        已保存到 src/assets/nailong.png 随仓库一起提交，因此页面离线也能显示。
+      -->
+      <div class="calc__mascot">
+        <img class="mascot" src="assets/nailong.png" alt="奶龙">
+      </div>
+      <h1 class="calc__title">奶龙计算器</h1>
+
+      <!-- 显示屏：表达式行 + 结果行 + 提示条 + 后端状态 -->
+      <div class="screen">
+        <!-- 显示屏左下的奶龙图案（纯装饰，用 CSS 背景图实现，不参与交互） -->
+        <span class="screen__mascot" aria-hidden="true"></span>
+        <p class="screen__expression is-empty" id="expression" data-placeholder="输入表达式"></p>
+        <p class="screen__result" id="result">—</p>
+        <p class="screen__message" id="message" role="status" aria-live="polite"></p>
+        <p class="screen__backend" id="backend-status">
+          <span class="screen__dot" aria-hidden="true"></span>
+          <span id="backend-text">后端未启用 · 结果由后端计算</span>
+        </p>
+      </div>
+
+      <!--
+        键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
+        每个按键用 data-key 声明语义，HTML 不写任何 onclick。
+      -->
+      <!--
+        键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
+        每个按键用 data-key 声明语义，HTML 不写任何 onclick。
+
+        排布：**固定 5 列网格**，每行正好 5 个，等号横跨整行。
+          第 1 行  AC ⌫ ( ) 7      ← 前 4 个是粉色功能键
+          第 2 行  8 9 + ÷ 4
+          第 3 行  5 6 − × 1
+          第 4 行  2 3 0 . ±
+          第 5 行  =（横跨 5 列）
+
+        为什么坚持"每行正好 5 个"：
+        之前试过 flex 自动换行，按键宽度一算错就变成一行 4 个，
+        整个键位全乱（7 跑到第一行、3 跑到第四行）。固定列数 + 明确每行个数才可控。
+      -->
+      <div class="keys" id="keys">
+        <button type="button" class="key key--fn" data-key="AC"   title="清空（Esc）">AC</button>
+        <button type="button" class="key key--fn" data-key="BACK" title="退格（Backspace）">⌫</button>
+        <button type="button" class="key key--fn" data-key="("    title="左括号">(</button>
+        <button type="button" class="key key--fn" data-key=")"    title="右括号">)</button>
+        <button type="button" class="key" data-key="7">7</button>
+
+        <button type="button" class="key" data-key="8">8</button>
+        <button type="button" class="key" data-key="9">9</button>
+        <button type="button" class="key key--op" data-key="+" title="加（+）">+</button>
+        <button type="button" class="key key--op" data-key="/" title="除（/）">÷</button>
+        <button type="button" class="key" data-key="4">4</button>
+
+        <button type="button" class="key" data-key="5">5</button>
+        <button type="button" class="key" data-key="6">6</button>
+        <button type="button" class="key key--op" data-key="-" title="减（-）">−</button>
+        <button type="button" class="key key--op" data-key="*" title="乘（*）">×</button>
+        <button type="button" class="key" data-key="1">1</button>
+
+        <button type="button" class="key" data-key="2">2</button>
+        <button type="button" class="key" data-key="3">3</button>
+        <button type="button" class="key" data-key="0">0</button>
+        <button type="button" class="key" data-key="." title="小数点">.</button>
+        <button type="button" class="key key--fn" data-key="NEG" title="正负号（n）">±</button>
+
+        <button type="button" class="key key--wide key--eq" data-key="=" title="计算（Enter / =）">=</button>
+      </div>
+    </section>
+
+    <!-- 历史记录：本轮为占位区，按要求不放任何假数据 -->
+    <aside class="history" aria-label="计算历史">
+      <!-- 历史卡片右上角的小奶龙：同一张图缩小复用 -->
+      <img class="history__mascot" src="assets/nailong.png" alt="">
+      <h2 class="history__title">计算历史</h2>
+      <p class="history__placeholder">
+        此区域将显示来自后端数据库的历史记录。<br>
+        本轮只完成前端界面与交互，历史记录需等前后端联调阶段接入。
+      </p>
+    </aside>
+  </main>
+
+  <!--
+    ★ 这里加载的是**传统脚本** bundle.js，而不是 ES 模块，原因是：
+      浏览器在 file:// 页面里不执行 <script type="module">，
+      双击打开本文件时模块会被跨域策略拒绝，所有交互都不生效
+      （页面看起来正常，但点按钮毫无反应 —— 真实踩过这个坑）。
+
+    bundle.js 由 tools/build-bundle.mjs 从 src/js/ 下的四个模块合并生成。
+    改逻辑请改源文件，然后运行：node tools/build-bundle.mjs
+  -->
+  <script src="js/bundle.js"></script>
+</body>
+</html>
