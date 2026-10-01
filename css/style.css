@@ -1,0 +1,441 @@
+/* ==========================================================================
+   计算器样式 · 832401217
+   配色：亮色系 · 奶油白 + 天空蓝 + 淡粉
+   吉祥物：奶龙（纯 SVG 绘制，不引用任何外部图片，见 index.html）
+
+   命名规范：BEM 变体（block / block__element / block--modifier）+
+             is-* 前缀表示"由 JavaScript 切换的状态类"
+   规范出处见仓库根目录 codestyle.md
+   ========================================================================== */
+
+:root {
+  /* 底色与容器 */
+  --bg-base: #eaf2ff;
+  --bg-base-2: #fdf3f7;
+  --card-bg: #ffffff;
+  --card-cream: #fffaf0;
+  --line: #e6ecf7;
+
+  /* 文字 */
+  --text: #3f4a63;
+  --text-dim: #8b97b4;
+  --text-faint: #b3bdd4;
+
+  /* 按键 */
+  --key-bg: #f5faff;
+  --key-bg-hover: #e4f0ff;
+  --key-text: #43506e;
+  --key-fn: #f08a9b;
+  --key-op: #58b4de;
+
+  /* 主色（等号） */
+  --brand: #8fd3f4;
+  --brand-hover: #79c6ee;
+  --brand-shadow: #6bb6e0;
+
+  /* 提示 */
+  --warn: #c2708a;
+  --danger: #e0617f;
+
+  /* 显示屏 */
+  --screen-bg: linear-gradient(180deg, #fbfdff 0%, #eef7ff 100%);
+  --screen-border: #d7e8f8;
+
+  --radius-card: 24px;
+  --radius-key: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  /* 淡淡的天空蓝 → 淡粉渐变背景，比纯色更有"奶"的感觉 */
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-base-2) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- ① 两栏：左计算器 / 右历史 ---------- */
+/* width:max-content + margin:auto：让整个组合在页面里**正中**，
+   而不是被拉满全宽后靠左对齐（浏览器窗口越宽，这个差别越明显） */
+.app {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 380px minmax(250px, 300px);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 780px) {
+  .app {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+}
+
+/* ---------- ② 机身 ---------- */
+.calc {
+  position: relative;
+  width: 380px;
+  /* 顶部内边距给大一点：吉祥物要在此处"探头"，不能被挤掉 */
+  padding: 24px 20px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 16px 36px rgba(120, 150, 200, .18);
+}
+
+/* ---------- ③ 吉祥物（奶龙）---------- */
+.calc__mascot {
+  display: flex;
+  justify-content: center;
+  /* 负数上边距只探出一小截，保证不会被页面顶边裁掉 */
+  margin: -22px 0 2px;
+}
+
+.mascot {
+  display: block;
+  width: 150px;
+  height: auto;
+}
+
+.calc__title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* ---------- ④ 历史卡片里的小奶龙 ---------- */
+.history__mascot {
+  float: right;
+  width: 54px;
+  height: auto;
+  margin: -6px 0 6px 10px;
+}
+
+/* ---------- ⑤ 显示屏 ---------- */
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  /* 高度要能容下"表达式行 + 结果行 + 提示条 + 后端状态丸"四行，
+     否则提示文字会被挤到换行（截图里踩过）。 */
+  min-height: 138px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--screen-bg);
+  border: 1px solid var(--screen-border);
+  border-radius: 18px;
+  text-align: right;
+  overflow: hidden;
+}
+
+/* 显示屏左下的奶龙图案。
+   尺寸必须小于显示区高度的一半（显示区 118px 高，头像取 52px），
+   否则会顶到右侧的表达式文字（试过 76px，盖住数字了）。 */
+.screen__mascot {
+  position: absolute;
+  left: 4px;
+  bottom: 46px;
+  width: 52px;
+  height: 52px;
+  background: url('../assets/nailong-face.png') center/cover no-repeat;
+  border-radius: 50%;
+  opacity: .28;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.screen__expression {
+  margin: 0;
+  min-height: 22px;
+  font-size: 17px;
+  line-height: 22px;
+  color: var(--text-dim);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+/* 表达式为空时显示占位文字（由 JavaScript 维护 is-empty 状态类） */
+.screen__expression.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+}
+
+/* 光标：用零宽空格作锚点切分文本，插入一个真实元素，避免使用 innerHTML */
+.screen__caret {
+  display: inline-block;
+  width: 2px;
+  height: 18px;
+  margin: 0 -1px;
+  vertical-align: -3px;
+  background: var(--key-op);
+  animation: caret-blink 1.1s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+.screen__result {
+  margin: 4px 0 0;
+  min-height: 32px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 32px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* 结果行在后端接通前显示占位符，用 is-placeholder 降低视觉权重 */
+.screen__result.is-placeholder {
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.screen__message {
+  margin: 6px 0 0;
+  min-height: 18px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--warn);
+}
+
+.screen__message.is-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* 后端状态：做成一颗小药丸，比一行灰字更清楚 */
+.screen__backend {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 3px 10px;
+  background: var(--card-cream);
+  border: 1px solid #f0e6d2;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #a58b6a;
+}
+
+.screen__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dcc9a6;
+}
+
+/* ---------- ⑥ 键盘：固定 5 列网格 ----------
+   宽度算准：计算器 380px，减去左右内边距各 20px = 340px 可用。
+   5 列 + 4 道 8px 的缝 = 5×61.6 + 32 ≈ 340，所以用 1fr 均分，每个键约 61.6px。
+
+   为什么必须用固定列数：先前试过 flex 自动换行，按键宽度一算错就变成一行 4 个，
+   整个键位错乱（7 跑到第一行、3 跑到第四行）。固定列数才能保证"每行 5 个"。 */
+.keys {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.key {
+  position: relative;
+  height: 52px;
+  padding: 0;
+  font: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--key-text);
+  background: var(--key-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-key);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background .12s, transform .06s, box-shadow .12s, border-color .12s;
+}
+
+/* ★ 按键底纹：奶龙小脸的角标图案
+   做法：把官方形象图裁成头像，并**逐像素把白色背景扣成透明**，
+        再以低不透明度贴在按键右下角。
+   为什么不用 mix-blend-mode 去白底：在浅色按键上 multiply 会把白底压成灰斑。
+   为什么不做大：按键只有 52px 高，头像超过约 26px 就会挤到数字。
+        所以取 22px、放右下角 —— 既看得出是奶龙，也不占符号的位置。
+   关键点：符号是按键的文字内容，绘制在伪元素**之上**，永远不会被底纹遮住。 */
+.key::before {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  background: url('../assets/nailong-face.png') center/cover no-repeat;
+  border-radius: 50%;
+  opacity: .5;
+  pointer-events: none;
+}
+
+/* 运算符键保持与数字键一致（都在右下角）：
+   运算符符号本身就在格子右侧，头像放右下能与之对齐成一条竖线，视觉更整齐。
+   功能键（AC/⌫/±/括号）则放左下，避免整排四个头像位置雷同。 */
+.key--fn::before {
+  right: auto;
+  left: 3px;
+}
+
+.key--fn:hover::before {
+  opacity: .72;
+}
+
+/* 悬停时底纹更清楚一点，作为"选中"的弱提示 */
+.key:hover::before {
+  opacity: .72;
+}
+
+/* 按下（含物理键盘触发）时头像完全显形，像"按到奶龙脸上" */
+.key.is-pressed::before {
+  opacity: .95;
+}
+
+.key:focus-visible {
+  outline: 3px solid rgba(143, 211, 244, .8);
+  outline-offset: 2px;
+}
+
+/* 等号是纯色按钮，底纹稍大稍淡，避免蓝色被压浑 */
+.key--eq::before {
+  width: 34px;
+  height: 34px;
+  right: 6px;
+  bottom: -4px;
+  opacity: .34;
+}
+
+.key--eq:hover::before {
+  opacity: .5;
+}
+
+/* 伪类：鼠标悬停 / 按住。这两条是纯 CSS 的"按下反馈"，不需要 JavaScript */
+.key:hover {
+  background: var(--key-bg-hover);
+  border-color: #cfe4f7;
+}
+
+.key:active {
+  transform: scale(.94);
+}
+
+/* ★ JavaScript 追加的状态类：CSS 伪类做不到的效果放这里
+   1) 运算符键"正在生效"时保持高亮，鼠标移开后依然可见
+   2) 被物理键盘按下时也能高亮（键盘没有 :active） */
+.key.is-armed {
+  background: #dff0fd;
+  border-color: var(--key-op);
+  box-shadow: 0 0 0 3px rgba(88, 180, 222, .18);
+}
+
+.key.is-pressed {
+  transform: scale(.94);
+  background: var(--key-bg-hover);
+}
+
+.key--fn {
+  color: var(--key-fn);
+  background: #fff5f7;
+  border-color: #fbe4ea;
+}
+
+.key--fn:hover {
+  background: #ffeef2;
+  border-color: #f7d3dd;
+}
+
+.key--op {
+  color: var(--key-op);
+  font-weight: 700;
+}
+
+.key--eq {
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 700;
+  background: var(--brand);
+  border-color: var(--brand-hover);
+  /* 立体感：底部厚边 + 柔和投影，像一颗可以按下去的糖果 */
+  box-shadow: 0 4px 0 var(--brand-shadow), 0 8px 18px rgba(120, 180, 220, .3);
+}
+
+.key--eq:hover {
+  background: var(--brand-hover);
+}
+
+/* 等号按下时"沉下去"：底部厚边收掉，位移补齐 */
+.key--eq:active,
+.key--eq.is-pressed {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--brand-shadow), 0 3px 8px rgba(120, 180, 220, .3);
+  background: var(--brand-hover);
+}
+
+.key--eq.is-armed {
+  background: var(--brand-hover);
+  box-shadow: 0 0 0 3px rgba(143, 211, 244, .35);
+}
+
+/* 等号横跨整行（5 列）。grid-column 只有在键盘是 Grid 布局时才有意义，
+   所以键盘从 flex 改回 Grid 之后这条规则重新生效。 */
+.key--wide { grid-column: span 5; }
+
+.key:disabled {
+  color: #c6cee0;
+  background: #f7f9fc;
+  cursor: not-allowed;
+}
+
+.key:focus-visible {
+  outline: 3px solid rgba(143, 211, 244, .8);
+  outline-offset: 2px;
+}
+
+/* ---------- ⑦ 历史记录占位区 ---------- */
+.history {
+  min-height: 200px;
+  padding: 18px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 16px 36px rgba(120, 150, 200, .13);
+}
+
+.history__title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.history__placeholder {
+  margin: 0;
+  font-size: 13px;
+  line-height: 22px;
+  color: var(--text-dim);
+}
