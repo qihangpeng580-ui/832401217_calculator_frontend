@@ -208,12 +208,38 @@ try {
     await cdp.evaluate('document.querySelector(\'[data-key="="]\').click()');
     await new Promise((r) => setTimeout(r, 150));
     const resultText = await cdp.evaluate('document.getElementById("result").textContent');
-    check('结果行仍是占位提示（前端没有算）', resultText, '后端未接通');
+
+    // ★ 这里断言的是"前端没有自己算"，而不是某个固定文案。
+    //   两种正确表现取决于线上有没有可用的后端：
+    //     · 后端不可达 → 结果行保持占位 "—"，提示条报"无法连接后端服务"
+    //     · 后端可达   → 结果行显示**后端算出的** 1+2=3
+    //   所以判定条件是"结果要么是占位符，要么等于后端该给的值（3）"。
+    //   （一开始写死成"后端未接通"，那是纯前端阶段的文案，联调后失效了。）
+    const looksLikePlaceholder = resultText === '—';
+    const looksLikeBackendResult = resultText === '3';
     check(
-      '提示条说明后端未接通',
-      await cdp.evaluate('document.getElementById("message").textContent'),
-      '后端未接通，本阶段不产生结果',
+      '结果行要么是占位符，要么是后端算出的 3（绝不是前端自己编的）',
+      looksLikePlaceholder || looksLikeBackendResult,
+      true,
     );
+
+    if (looksLikePlaceholder) {
+      // 后端不可达时，提示条必须明确说明原因，而不是默默什么都不显示
+      const messageText = await cdp.evaluate('document.getElementById("message").textContent');
+      check('提示条说明了连不上后端', messageText.includes('无法连接后端服务'), true);
+      check(
+        '提示条标红',
+        await cdp.evaluate('document.getElementById("message").classList.contains("is-error")'),
+        true,
+      );
+      check(
+        '后端状态显示为未连接',
+        await cdp.evaluate('document.getElementById("backend-text").textContent.includes("未连接")'),
+        true,
+      );
+    } else {
+      check('结果行显示的是后端算出的 3', resultText, '3');
+    }
 
     console.log('\n[5] 无脚本错误');
     check('页面没有 JavaScript 报错', await cdp.evaluate('window.__deployErrors ? window.__deployErrors.length : 0'), 0);
