@@ -158,11 +158,34 @@ export function showServerError(errorCode) {
 }
 
 /**
- * 更新右下角的后端连接状态。
+ * 更新右下角的后端连接状态文字。
  * @param {string} text
  */
 export function setBackendStatus(text) {
   backendTextEl.textContent = text;
+}
+
+/**
+ * 更新后端状态指示点的颜色。
+ *
+ * 三个状态：
+ *   'online'   绿点 —— 后端可用
+ *   'offline'  红点 —— 连不上后端
+ *   'unknown'  灰点 —— 还没检查过
+ *
+ * 为什么状态点要单独一个函数：
+ *   文字和颜色是两件事 —— 文字可能因为别的原因变化，
+ *   而颜色只反映连通性。分开之后互不干扰。
+ *
+ * @param {'online'|'offline'|'unknown'} state
+ */
+export function setBackendDot(state) {
+  const panel = backendTextEl.closest('.screen__backend');
+  if (!(panel instanceof HTMLElement)) {
+    return;
+  }
+  panel.classList.toggle('is-online', state === 'online');
+  panel.classList.toggle('is-offline', state === 'offline');
 }
 
 // 截图脚本的注入入口。之所以挂在 window 上而不是写进业务代码，
