@@ -1,43 +1,43 @@
 /* ==========================================================================
-   计算器样式 · 832401217
-   配色：亮色系 · 奶油白 + 天空蓝 + 淡粉
-   吉祥物：奶龙（纯 SVG 绘制，不引用任何外部图片，见 index.html）
+   Calculator styles · 832401217
+   Palette: light theme · cream white + sky blue + pale pink
+   Mascot: Nailong (drawn purely in SVG, no external image referenced, see index.html)
 
-   命名规范：BEM 变体（block / block__element / block--modifier）+
-             is-* 前缀表示"由 JavaScript 切换的状态类"
-   规范出处见仓库根目录 codestyle.md
+   Naming convention: BEM variant (block / block__element / block--modifier) +
+                      an is-* prefix marks "a state class toggled by JavaScript"
+   The code standard lives at codestyle.md in the repository root.
    ========================================================================== */
 
 :root {
-  /* 底色与容器 */
+  /* Base colors and containers */
   --bg-base: #eaf2ff;
   --bg-base-2: #fdf3f7;
   --card-bg: #ffffff;
   --card-cream: #fffaf0;
   --line: #e6ecf7;
 
-  /* 文字 */
+  /* Text */
   --text: #3f4a63;
   --text-dim: #8b97b4;
   --text-faint: #b3bdd4;
 
-  /* 按键 */
+  /* Keys */
   --key-bg: #f5faff;
   --key-bg-hover: #e4f0ff;
   --key-text: #43506e;
   --key-fn: #f08a9b;
   --key-op: #58b4de;
 
-  /* 主色（等号） */
+  /* Primary color (equals key) */
   --brand: #8fd3f4;
   --brand-hover: #79c6ee;
   --brand-shadow: #6bb6e0;
 
-  /* 提示 */
+  /* Messages */
   --warn: #c2708a;
   --danger: #e0617f;
 
-  /* 显示屏 */
+  /* Display */
   --screen-bg: linear-gradient(180deg, #fbfdff 0%, #eef7ff 100%);
   --screen-border: #d7e8f8;
 
@@ -56,7 +56,7 @@ body {
   display: grid;
   place-items: center;
   padding: 20px;
-  /* 淡淡的天空蓝 → 淡粉渐变背景，比纯色更有"奶"的感觉 */
+  /* Soft sky-blue → pale pink gradient background; it reads as "creamier" than a flat color */
   background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-base-2) 100%);
   background-attachment: fixed;
   color: var(--text);
@@ -65,9 +65,10 @@ body {
   user-select: none;
 }
 
-/* ---------- ① 两栏：左计算器 / 右历史 ---------- */
-/* width:max-content + margin:auto：让整个组合在页面里**正中**，
-   而不是被拉满全宽后靠左对齐（浏览器窗口越宽，这个差别越明显） */
+/* ---------- 1. Two columns: calculator on the left / history on the right ---------- */
+/* width:max-content + margin:auto: keeps the whole group **centered** on the page,
+   instead of stretching it to full width and left-aligning it (the wider the browser
+   window, the more visible this difference) */
 .app {
   width: max-content;
   max-width: 100%;
@@ -85,11 +86,11 @@ body {
   }
 }
 
-/* ---------- ② 机身 ---------- */
+/* ---------- 2. Body ---------- */
 .calc {
   position: relative;
   width: 380px;
-  /* 顶部内边距给大一点：吉祥物要在此处"探头"，不能被挤掉 */
+  /* Generous top padding: the mascot pokes its head out here and must not be squeezed out */
   padding: 24px 20px 20px;
   background: var(--card-bg);
   border: 1px solid var(--line);
@@ -97,11 +98,12 @@ body {
   box-shadow: 0 16px 36px rgba(120, 150, 200, .18);
 }
 
-/* ---------- ③ 吉祥物（奶龙）---------- */
+/* ---------- 3. Mascot (Nailong) ---------- */
 .calc__mascot {
   display: flex;
   justify-content: center;
-  /* 负数上边距只探出一小截，保证不会被页面顶边裁掉 */
+  /* A small negative top margin so it only pokes out a little and is never clipped by the top
+     edge */
   margin: -22px 0 2px;
 }
 
@@ -120,7 +122,7 @@ body {
   color: var(--text-dim);
 }
 
-/* ---------- ④ 历史卡片里的小奶龙 ---------- */
+/* ---------- 4. Small Nailong in the history card ---------- */
 .history__mascot {
   float: right;
   width: 54px;
@@ -128,14 +130,14 @@ body {
   margin: -6px 0 6px 10px;
 }
 
-/* ---------- ⑤ 显示屏 ---------- */
+/* ---------- 5. Display ---------- */
 .screen {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  /* 高度要能容下"表达式行 + 结果行 + 提示条 + 后端状态丸"四行，
-     否则提示文字会被挤到换行（截图里踩过）。 */
+  /* The height must fit four rows: expression line + result line + message bar + back-end
+     status pill, otherwise the message text is pushed onto a new line. */
   min-height: 138px;
   margin-bottom: 16px;
   padding: 14px 16px;
@@ -146,9 +148,10 @@ body {
   overflow: hidden;
 }
 
-/* 显示屏左下的奶龙图案。
-   尺寸必须小于显示区高度的一半（显示区 118px 高，头像取 52px），
-   否则会顶到右侧的表达式文字（试过 76px，盖住数字了）。 */
+/* Nailong artwork in the lower-left corner of the display.
+   The size must stay below half the display height (the display is 118px tall, the avatar
+   is 52px), otherwise it pushes into the expression text on the right (76px was tried and
+   covered the digits). */
 .screen__mascot {
   position: absolute;
   left: 4px;
@@ -173,13 +176,15 @@ body {
   white-space: pre-wrap;
 }
 
-/* 表达式为空时显示占位文字（由 JavaScript 维护 is-empty 状态类） */
+/* Shows placeholder text while the expression is empty (JavaScript maintains the is-empty
+   state class) */
 .screen__expression.is-empty::before {
   content: attr(data-placeholder);
   color: var(--text-faint);
 }
 
-/* 光标：用零宽空格作锚点切分文本，插入一个真实元素，避免使用 innerHTML */
+/* Caret: use a zero-width space as an anchor to split the text and insert a real element,
+   avoiding innerHTML */
 .screen__caret {
   display: inline-block;
   width: 2px;
@@ -204,7 +209,8 @@ body {
   word-break: break-all;
 }
 
-/* 结果行在后端接通前显示占位符，用 is-placeholder 降低视觉权重 */
+/* The result line shows a placeholder before the back end is connected; is-placeholder lowers
+   its visual weight */
 .screen__result.is-placeholder {
   font-size: 17px;
   font-weight: 400;
@@ -224,7 +230,7 @@ body {
   font-weight: 700;
 }
 
-/* 后端状态：做成一颗小药丸，比一行灰字更清楚 */
+/* Back-end status: rendered as a small pill, clearer than a line of gray text */
 .screen__backend {
   display: inline-flex;
   align-items: center;
@@ -246,15 +252,21 @@ body {
   background: #dcc9a6;
 }
 
-/* ---------- ⑥ 键盘：固定 5 列网格 ----------
-   宽度算准：计算器 380px，减去左右内边距各 20px = 340px 可用。
-   5 列 + 4 道 8px 的缝 = 5×61.6 + 32 ≈ 340，所以用 1fr 均分，每个键约 61.6px。
+/* ---------- 6. Keypad: fixed 4-column grid ----------
+   Width math: the calculator is 380px, minus 20px of padding on each side = 340px
+   available. 4 columns + 3 gaps of 8px = 4×79 + 24 = 340, so 1fr splits it evenly and each
+   key is about 79px.
 
-   为什么必须用固定列数：先前试过 flex 自动换行，按键宽度一算错就变成一行 4 个，
-   整个键位错乱（7 跑到第一行、3 跑到第四行）。固定列数才能保证"每行 5 个"。 */
+   The grid fills left to right, top to bottom, in DOM order, so **the number of keys per
+   row must exactly equal the column count**, otherwise the whole row is misaligned.
+   This once used 5 columns while the keys were still ordered in groups of 4, so 7 was
+   squeezed onto the first row and 3 fell to the fourth, throwing the whole keypad off.
+   At the time this was misdiagnosed as "flex wrapping computing the width wrong", and
+   switching to a fixed column count did not fix it -- the root cause was that **the
+   column count and the key order did not match**. */
 .keys {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
@@ -274,13 +286,17 @@ body {
   transition: background .12s, transform .06s, box-shadow .12s, border-color .12s;
 }
 
-/* ★ 按键底纹：奶龙小脸的角标图案
-   做法：把官方形象图裁成头像，并**逐像素把白色背景扣成透明**，
-        再以低不透明度贴在按键右下角。
-   为什么不用 mix-blend-mode 去白底：在浅色按键上 multiply 会把白底压成灰斑。
-   为什么不做大：按键只有 52px 高，头像超过约 26px 就会挤到数字。
-        所以取 22px、放右下角 —— 既看得出是奶龙，也不占符号的位置。
-   关键点：符号是按键的文字内容，绘制在伪元素**之上**，永远不会被底纹遮住。 */
+/* Key watermark: a corner badge of Nailong's little face.
+   How: crop the official artwork into a head shot, **knock the white background out to
+        transparency pixel by pixel**, then paste it into the key's lower-right corner at
+        low opacity.
+   Why not use mix-blend-mode to drop the white: on a light key, multiply crushes the white
+   background into gray blotches.
+   Why not make it bigger: the key is only 52px tall, and a head shot over about 26px
+        pushes into the digits. So it is 22px in the lower-right corner -- recognizably
+        Nailong without taking the symbol's space.
+   Key point: the symbol is the key's text content and is painted **above** the pseudo
+        element, so it is never covered by the watermark. */
 .key::before {
   content: '';
   position: absolute;
@@ -294,9 +310,11 @@ body {
   pointer-events: none;
 }
 
-/* 运算符键保持与数字键一致（都在右下角）：
-   运算符符号本身就在格子右侧，头像放右下能与之对齐成一条竖线，视觉更整齐。
-   功能键（AC/⌫/±/括号）则放左下，避免整排四个头像位置雷同。 */
+/* Operator keys stay consistent with the digit keys (both in the lower-right corner):
+   the operator symbol itself sits on the right of the cell, so putting the head shot in
+   the lower right aligns it into a single vertical line, which looks tidier.
+   Function keys (AC/⌫/±/parentheses) use the lower left instead, so four head shots in a
+   row do not all sit in the same place. */
 .key--fn::before {
   right: auto;
   left: 3px;
@@ -306,12 +324,13 @@ body {
   opacity: .72;
 }
 
-/* 悬停时底纹更清楚一点，作为"选中"的弱提示 */
+/* On hover the watermark becomes a bit clearer as a weak "selected" hint */
 .key:hover::before {
   opacity: .72;
 }
 
-/* 按下（含物理键盘触发）时头像完全显形，像"按到奶龙脸上" */
+/* While pressed (including presses from a physical keyboard) the head shot is fully visible,
+   like "pressing Nailong's face" */
 .key.is-pressed::before {
   opacity: .95;
 }
@@ -321,7 +340,8 @@ body {
   outline-offset: 2px;
 }
 
-/* 等号是纯色按钮，底纹稍大稍淡，避免蓝色被压浑 */
+/* The equals key is a solid-color button, so the watermark is slightly larger and fainter to
+   keep the blue from turning muddy */
 .key--eq::before {
   width: 34px;
   height: 34px;
@@ -334,7 +354,8 @@ body {
   opacity: .5;
 }
 
-/* 伪类：鼠标悬停 / 按住。这两条是纯 CSS 的"按下反馈"，不需要 JavaScript */
+/* Pseudo-classes: mouse hover / press. These two provide pure-CSS "press feedback" and need no
+   JavaScript */
 .key:hover {
   background: var(--key-bg-hover);
   border-color: #cfe4f7;
@@ -344,9 +365,10 @@ body {
   transform: scale(.94);
 }
 
-/* ★ JavaScript 追加的状态类：CSS 伪类做不到的效果放这里
-   1) 运算符键"正在生效"时保持高亮，鼠标移开后依然可见
-   2) 被物理键盘按下时也能高亮（键盘没有 :active） */
+/* State classes added by JavaScript: effects CSS pseudo-classes cannot achieve live here
+   1) An operator key stays highlighted while it is "armed", still visible after the mouse
+      moves away
+   2) It also highlights when pressed on a physical keyboard (a keyboard has no :active) */
 .key.is-armed {
   background: #dff0fd;
   border-color: var(--key-op);
@@ -380,7 +402,7 @@ body {
   font-weight: 700;
   background: var(--brand);
   border-color: var(--brand-hover);
-  /* 立体感：底部厚边 + 柔和投影，像一颗可以按下去的糖果 */
+  /* Depth: a thick bottom edge + a soft shadow, like a candy you can press down */
   box-shadow: 0 4px 0 var(--brand-shadow), 0 8px 18px rgba(120, 180, 220, .3);
 }
 
@@ -388,7 +410,8 @@ body {
   background: var(--brand-hover);
 }
 
-/* 等号按下时"沉下去"：底部厚边收掉，位移补齐 */
+/* The equals key "sinks" when pressed: the thick bottom edge collapses and the offset
+   compensates */
 .key--eq:active,
 .key--eq.is-pressed {
   transform: translateY(3px);
@@ -401,9 +424,9 @@ body {
   box-shadow: 0 0 0 3px rgba(143, 211, 244, .35);
 }
 
-/* 等号横跨整行（5 列）。grid-column 只有在键盘是 Grid 布局时才有意义，
-   所以键盘从 flex 改回 Grid 之后这条规则重新生效。 */
-.key--wide { grid-column: span 5; }
+/* The equals key spans the whole row (4 columns) as the primary "submit calculation"
+   action button. `grid-column` is only meaningful while the keypad uses a Grid layout. */
+.key--wide { grid-column: span 4; }
 
 .key:disabled {
   color: #c6cee0;
@@ -412,17 +435,19 @@ body {
 }
 
 /*
- * 键盘区容器被聚焦时**不要**画默认焦点框。
+ * **Never** draw the default focus ring when the keypad container is focused.
  *
- * 背景：容器设了 tabIndex = -1，使它可以被脚本 focus()（这是为了修掉
- *      "按回车重复上一次按键"的怪现象 —— 焦点必须离开按钮）。
- *      但浏览器默认会给被聚焦的元素画一圈黑框，于是每点一次按钮，
- *      整个键盘区外面就多一圈很显眼的黑边（截图里看到的）。
+ * Background: the container sets tabIndex = -1 so that it can be focus()ed by script
+ *      (this fixes the odd "pressing Enter repeats the previous key" behaviour -- focus
+ *      must leave the button). But browsers draw a black ring around any focused element
+ *      by default, so every button click added a very visible black outline around the
+ *      whole keypad (as seen in the screenshot).
  *
- * 为什么这里可以直接用 :focus 而不是 :focus-visible：
- *      容器本身不是可操作元素（用户不会拿它触发任何动作，它只是事件委托的挂载点），
- *      所以任何情况下都不需要焦点提示。真正需要焦点提示的是里面的**按钮**，
- *      它们的 :focus-visible 规则在下面。
+ * Why :focus works directly here instead of :focus-visible:
+ *      the container is not an operable element (users never trigger an action with it; it
+ *      is only the mount point for event delegation), so it never needs a focus cue. What
+ *      does need a focus cue are the **buttons** inside, whose :focus-visible rule is
+ *      below.
  */
 .keys:focus,
 .keys:focus-visible {
@@ -434,14 +459,14 @@ body {
   outline-offset: 2px;
 }
 
-/* ---------- ⑦ 历史记录（数据来自后端数据库） ---------- */
+/* ---------- 7. History (data comes from the back-end database) ---------- */
 .history {
   display: flex;
   flex-direction: column;
   position: relative;
-  /* 固定高度 + 列表内部滚动：
-     历史条数没有上限，如果让卡片跟着长，页面会被拉得很长，
-     计算器本身反而被挤到看不见了。 */
+  /* Fixed height + scrolling inside the list:
+     the number of history records is unbounded, and if the card grew along with them the
+     page would get very long while the calculator itself was squeezed out of sight. */
   height: 460px;
   padding: 18px 20px 16px;
   background: var(--card-bg);
@@ -465,13 +490,13 @@ body {
   color: var(--text);
 }
 
-/* "共 N 条" / "显示 20 / 共 35 条" */
+/* "N records total" / "showing 20 / 35 total" */
 .history__count {
   font-size: 12px;
   color: var(--text-dim);
 }
 
-/* ---------- 搜索与清空 ---------- */
+/* ---------- Search and clear ---------- */
 .history__search {
   display: flex;
   gap: 8px;
@@ -520,7 +545,7 @@ body {
   filter: brightness(.96);
 }
 
-/* ---------- 列表 ---------- */
+/* ---------- List ---------- */
 .history__list {
   flex: 1;
   margin: 0;
@@ -529,7 +554,7 @@ body {
   list-style: none;
 }
 
-/* 滚动条细一点，不要抢视觉 */
+/* A thin scrollbar so it does not steal attention */
 .history__list::-webkit-scrollbar {
   width: 6px;
 }
@@ -552,7 +577,7 @@ body {
 }
 
 .history__main {
-  min-width: 0; /* 让长表达式能被截断而不是把卡片撑破 */
+  min-width: 0; /* Lets a long expression be truncated instead of bursting the card */
 }
 
 .history__expression {
@@ -606,7 +631,7 @@ body {
   opacity: .5;
 }
 
-/* ---------- 空状态 / 加载中 / 错误 ---------- */
+/* ---------- Empty state / loading / error ---------- */
 .history__status {
   margin: 8px 0 0;
   font-size: 12px;
@@ -618,7 +643,8 @@ body {
   color: var(--danger-text, #d6455f);
 }
 
-/* 列表为空时，提示文字应该顶到上面，而不是被 flex 挤到底部 */
+/* When the list is empty the message should sit at the top instead of being pushed to the
+   bottom by flex */
 .history__list:empty + .history__status {
   margin-top: 0;
 }
