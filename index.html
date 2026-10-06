@@ -1,128 +1,144 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>计算器 · 832401217</title>
+  <title>Calculator · 832401217</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 整页只有一个主区域：左侧计算器，右侧历史记录占位 -->
+  <!-- The whole page has a single main region: the calculator on the left, the history record
+       placeholder on the right -->
   <main class="app">
-    <section class="calc" aria-label="计算器">
-      <!--
-        吉祥物：奶龙（Nailong）。
-        图片来源：第七印象官方网站（nailoong.com）「IP大明星 → 奶龙」页面的形象图，
-        已保存到 src/assets/nailong.png 随仓库一起提交，因此页面离线也能显示。
-      -->
+    <section class="calc" aria-label="Calculator">
+      <!-- The mascot image is stored locally so it still renders when the page is offline -->
       <div class="calc__mascot">
-        <img class="mascot" src="assets/nailong.png" alt="奶龙">
+        <img class="mascot" src="assets/nailong.png" alt="Nailong">
       </div>
-      <h1 class="calc__title">奶龙计算器</h1>
+      <h1 class="calc__title">Nailong Calculator</h1>
 
-      <!-- 显示屏：表达式行 + 结果行 + 提示条 + 后端状态 -->
+      <!-- Display: expression line + result line + message bar + back-end status -->
       <div class="screen">
-        <!-- 显示屏左下的奶龙图案（纯装饰，用 CSS 背景图实现，不参与交互） -->
+        <!-- Nailong artwork in the lower-left corner of the display (purely decorative, drawn
+             with a CSS background image, not interactive) -->
         <span class="screen__mascot" aria-hidden="true"></span>
-        <p class="screen__expression is-empty" id="expression" data-placeholder="输入表达式"></p>
+        <p class="screen__expression is-empty" id="expression"
+           data-placeholder="Enter an expression"></p>
         <p class="screen__result" id="result">—</p>
         <p class="screen__message" id="message" role="status" aria-live="polite"></p>
         <p class="screen__backend" id="backend-status">
           <span class="screen__dot" aria-hidden="true"></span>
-          <span id="backend-text">后端未启用 · 结果由后端计算</span>
+          <span id="backend-text">Back end not enabled — result computed by the back end</span>
         </p>
       </div>
 
       <!--
-        键盘区：★ 整个区域只挂一个 click 监听器（事件委托），见 js/calc-buttons.js。
-        每个按键用 data-key 声明语义，HTML 不写任何 onclick。
+        Keypad: a single click listener is attached to the whole region (event delegation),
+        see js/calc-buttons.js. Each key declares its semantics with data-key, and the HTML
+        contains no onclick at all.
 
-        排布：**固定 5 列网格**，每行正好 5 个，等号横跨整行。
-          第 1 行  AC ⌫ ( ) 7      ← 前 4 个是粉色功能键
-          第 2 行  8 9 + ÷ 4
-          第 3 行  5 6 − × 1
-          第 4 行  2 3 0 . ±
-          第 5 行  =（横跨 5 列）
+        Layout: **a fixed 4-column grid**, digits run in rows, and the equals key spans the
+        whole row.
+          Row 1  AC ⌫ ( )        ← 4 pink function keys
+          Row 2  7 8 9 ÷
+          Row 3  4 5 6 ×
+          Row 4  1 2 3 −
+          Row 5  0 . ± +
+          Row 6  = (spans all 4 columns)
 
-        为什么坚持"每行正好 5 个"：
-        之前试过 flex 自动换行，按键宽度一算错就变成一行 4 个，
-        整个键位全乱（7 跑到第一行、3 跑到第四行）。固定列数 + 明确每行个数才可控。
+        An easy mistake worth recording here:
+        the **source order** of the keys in the HTML is the **fill order** in the grid.
+        An earlier version used 5 columns and did not group the keys by row, so 7 was
+        squeezed onto the first row and 3 fell to the fourth, misaligning the whole keypad.
+        At the time this was blamed on flex wrapping, but switching to a "fixed column
+        count" did not fix it -- the real cause was the **order**, regardless of which
+        layout engine is used.
       -->
       <div class="keys" id="keys">
-        <button type="button" class="key key--fn" data-key="AC"   title="清空（Esc）">AC</button>
-        <button type="button" class="key key--fn" data-key="BACK" title="退格（Backspace）">⌫</button>
-        <button type="button" class="key key--fn" data-key="("    title="左括号">(</button>
-        <button type="button" class="key key--fn" data-key=")"    title="右括号">)</button>
-        <button type="button" class="key" data-key="7">7</button>
+        <button type="button" class="key key--fn" data-key="AC"   title="Clear (Esc)">AC</button>
+        <button type="button" class="key key--fn" data-key="BACK" title="Backspace">⌫</button>
+        <button type="button" class="key key--fn" data-key="("
+                title="Left parenthesis">(</button>
+        <button type="button" class="key key--fn" data-key=")"
+                title="Right parenthesis">)</button>
 
+        <button type="button" class="key" data-key="7">7</button>
         <button type="button" class="key" data-key="8">8</button>
         <button type="button" class="key" data-key="9">9</button>
-        <button type="button" class="key key--op" data-key="+" title="加（+）">+</button>
-        <button type="button" class="key key--op" data-key="/" title="除（/）">÷</button>
-        <button type="button" class="key" data-key="4">4</button>
+        <button type="button" class="key key--op" data-key="/" title="Divide (/)">÷</button>
 
+        <button type="button" class="key" data-key="4">4</button>
         <button type="button" class="key" data-key="5">5</button>
         <button type="button" class="key" data-key="6">6</button>
-        <button type="button" class="key key--op" data-key="-" title="减（-）">−</button>
-        <button type="button" class="key key--op" data-key="*" title="乘（*）">×</button>
-        <button type="button" class="key" data-key="1">1</button>
+        <button type="button" class="key key--op" data-key="*" title="Multiply (*)">×</button>
 
+        <button type="button" class="key" data-key="1">1</button>
         <button type="button" class="key" data-key="2">2</button>
         <button type="button" class="key" data-key="3">3</button>
-        <button type="button" class="key" data-key="0">0</button>
-        <button type="button" class="key" data-key="." title="小数点">.</button>
-        <button type="button" class="key key--fn" data-key="NEG" title="正负号（n）">±</button>
+        <button type="button" class="key key--op" data-key="-" title="Subtract (-)">−</button>
 
-        <button type="button" class="key key--wide key--eq" data-key="=" title="计算（Enter / =）">=</button>
+        <button type="button" class="key" data-key="0">0</button>
+        <button type="button" class="key" data-key="." title="Decimal point">.</button>
+        <button type="button" class="key key--fn" data-key="NEG" title="Sign (n)">±</button>
+        <button type="button" class="key key--op" data-key="+" title="Add (+)">+</button>
+
+        <button type="button" class="key key--wide key--eq" data-key="="
+                title="Calculate (Enter / =)">=</button>
       </div>
     </section>
 
     <!--
-      历史记录区：数据全部来自后端数据库（GET /api/history）。
-      这里不放任何假数据 —— 列表为空时显示"还没有计算记录"。
+      History region: all data comes from the back-end database (GET /api/history).
+      No mock data is placed here -- when the list is empty it shows the empty-state
+      text "No calculation records yet".
     -->
-    <aside class="history" aria-label="计算历史">
-      <!-- 历史卡片右上角的小奶龙：同一张图缩小复用 -->
+    <aside class="history" aria-label="Calculation history">
+      <!-- Small Nailong in the top-right corner of the history card: the same image reused at
+           a smaller size -->
       <img class="history__mascot" src="assets/nailong.png" alt="">
 
       <div class="history__head">
-        <h2 class="history__title">计算历史</h2>
+        <h2 class="history__title">Calculation history</h2>
         <span class="history__count" id="history-count" aria-live="polite"></span>
       </div>
 
-      <!-- 搜索框：对应后端 GET /api/history?keyword=... （扩展功能） -->
+      <!-- Search box: maps to the back-end GET /api/history?keyword=... (extension feature) -->
       <div class="history__search">
         <input
           type="search"
           id="history-keyword"
           class="history__input"
-          placeholder="搜索表达式，如 12 或 *"
+          placeholder="Search expressions, e.g. 12 or *"
           autocomplete="off"
-          aria-label="搜索历史记录"
+          aria-label="Search history"
         >
-        <button type="button" class="history__clear" id="history-clear" title="清空全部历史记录">清空</button>
+        <button type="button" class="history__clear" id="history-clear"
+                title="Clear all history">Clear</button>
       </div>
 
       <!--
-        列表容器。
-        ★ 每条记录由一个"删除"按钮，用事件委托实现（与键盘区同样的思路）：
-          整个列表只挂一个 click 监听器，见 js/history.js。
+        List container.
+        Each record carries a "delete" button, implemented with event delegation (the same
+        idea as the keypad):
+          a single click listener on the whole list, see js/history.js.
       -->
       <ul class="history__list" id="history-list"></ul>
 
-      <!-- 空状态 / 加载中 / 错误提示，三种情况复用这一个元素 -->
+      <!-- Empty state / loading / error message: one element reused for all three cases -->
       <p class="history__status" id="history-status" role="status" aria-live="polite"></p>
     </aside>
   </main>
 
   <!--
-    ★ 这里加载的是**传统脚本** bundle.js，而不是 ES 模块，原因是：
-      浏览器在 file:// 页面里不执行 <script type="module">，
-      双击打开本文件时模块会被跨域策略拒绝，所有交互都不生效
-      （页面看起来正常，但点按钮毫无反应 —— 真实踩过这个坑）。
+    This loads the **classic script** bundle.js instead of an ES module, because:
+      browsers do not execute <script type="module"> on file:// pages, so when this file is
+      opened by double-clicking, the module is rejected by the cross-origin policy and no
+      interaction works at all (the page looks normal, but clicking the buttons does
+      nothing).
 
-    bundle.js 由 tools/build-bundle.mjs 从 src/js/ 下的模块合并生成。
-    改逻辑请改源文件，然后运行：node tools/build-bundle.mjs
+    bundle.js is generated by tools/build-bundle.mjs, which merges the modules under
+    src/js/. To change the logic, edit the source files and then run:
+    node tools/build-bundle.mjs
   -->
   <script src="js/bundle.js"></script>
 </body>
