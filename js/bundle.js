@@ -1,94 +1,101 @@
 /**
- * ⚠ 生成物 —— 请勿手工编辑。
- * 由 tools/build-bundle.mjs 从 src/js/ 下的 ES 模块合并而来。
- * 改逻辑请改源文件，然后运行：node tools/build-bundle.mjs
+ * Generated file — do not edit by hand.
+ * Produced by tools/build-bundle.mjs from the ES modules under src/js/.
+ * To change behaviour, edit the source files and run: node tools/build-bundle.mjs
  *
- * 存在的理由：浏览器在 file:// 页面里不执行 ES 模块，
- * 双击打开 index.html 会完全没有交互；打包成传统脚本后双击即可使用。
+ * Why it exists: a browser does not execute ES modules on a file:// page,
+ * so opening index.html by double-click would be completely inert. Bundling
+ * everything into a classic script makes the double-click work.
  */
 (function () {
   'use strict';
 
-  /* ===== 源文件：src/js/config.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/config.js (generated, do not edit by hand) ===== */
   const config = (function () {
 /**
- * 配置层 —— 前端需要知道的"外部世界"信息都放在这里。
+ * Config layer — every piece of "outside world" information the front-end needs lives here.
  *
- * 为什么单独一个文件：
- *   后端地址在开发、部署、演示三种场景下是不同的。
- *   如果把它散落在代码各处，上线时要翻遍所有文件找。
- *   集中一处，改一行就够。
+ * Why a separate file:
+ *   the back-end address differs between development, deployment and demonstration.
+ *   Scattered across the code, it would mean searching every file before a release.
+ *   Kept in one place, one line is enough.
  *
- * ⚠️ 部署前必须改这里 ↑
+ * Change this before deploying ↑
  */
 
 /**
- * 后端服务的地址（末尾不要带斜杠）。
+ * Back-end service address (no trailing slash).
  *
- * 取值说明：
- *   · 本地开发： 'http://127.0.0.1:8000'   ← 前端和后端都在本机
- *   · 部署之后： 改成后端的公网地址，例如 'https://xxx.example.com'
+ * Values:
+ *   · Local development: 'http://127.0.0.1:8000'   ← front-end and back-end both on this machine
+ *   · After deployment:  the back-end's public address, e.g. 'https://xxx.example.com'
  *
- * 特殊情况：
- *   前端和后端**同源**部署时（同一个域名端口）可以留空字符串 ''，
- *   这样请求会打到 /api/... 而不是跨域 —— 也就不存在 CORS 问题。
+ * Special case:
+ *   when front-end and back-end are deployed **same-origin** (same domain and port) this can be
+ *   the empty string '', so requests go to /api/... instead of cross-origin — and CORS is a
+ *   non-issue.
  */
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 /**
- * 单个请求的超时时间（毫秒）。
+ * Timeout for a single request (milliseconds).
  *
- * 为什么必须设超时：
- *   后端挂掉时，浏览器的 fetch 默认会一直挂着不返回，
- *   用户按了 = 之后界面永远停在"计算中"，看起来像死机。
- *   设了超时才能给出"连不上后端"的明确提示。
+ * Why a timeout is required:
+ *   when the back-end is down, the browser's fetch hangs and never returns by default,
+ *   so after the user presses = the UI stays on "calculating" forever and looks frozen.
+ *   Only with a timeout can we show a clear "cannot reach the back-end" message.
  */
 const REQUEST_TIMEOUT_MS = 8000;
 
 /**
- * 历史记录一次拉多少条。
+ * How many history records to fetch at a time.
  */
 const HISTORY_PAGE_SIZE = 20;
 
 /**
- * 历史记录里每条显示的表达式最大长度（超出截断加省略号）。
- * 防止一条超长表达式把列表撑破。
+ * Maximum length of each expression shown in the history list (longer ones are truncated with
+ * an ellipsis).
+ * Keeps a single very long expression from breaking the list layout.
  */
 const HISTORY_EXPRESSION_MAX_LENGTH = 28;
 
   return { API_BASE_URL, REQUEST_TIMEOUT_MS, HISTORY_PAGE_SIZE, HISTORY_EXPRESSION_MAX_LENGTH };
   })();
 
-  /* 把 config 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure config's exports into the bundling scope so later modules can reference them by name */
   const { API_BASE_URL, REQUEST_TIMEOUT_MS, HISTORY_PAGE_SIZE, HISTORY_EXPRESSION_MAX_LENGTH } = config;
 
-  /* ===== 源文件：src/js/api.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/api.js (generated, do not edit by hand) ===== */
   const api = (function (API_BASE_URL, REQUEST_TIMEOUT_MS) {
 /**
- * API 客户端 —— 前端唯一与后端通信的地方。
+ * API client — the only place in the front-end that talks to the back-end.
  *
- * 设计原则：
- *   1. **前端不做计算**。这个文件的每个函数都只是"发出去、收回来、翻译一下"，
- *      一行算术都没有。结果和错误都由后端决定。
- *   2. **所有网络细节关在这个文件里**。其余模块不知道有 fetch、不知道有 HTTP 状态码，
- *      只看到"成功拿到数据"或"抛出一个带错误码的异常"。
- *      以后要换成 XMLHttpRequest 或 WebSocket，只有这里要改。
- *   3. **错误一律归一化成 ApiError**。调用方只需判断 error.code，
- *      不用管是网络错了、超时了、还是后端返回了业务错误。
+ * Design principles:
+ *   1. **The front-end never computes**. Every function in this file just sends, receives and
+ *      translates; there is not a single arithmetic operation here. Results and errors are
+ *      decided by the back-end.
+ *   2. **All network details stay inside this file**. Other modules do not know that fetch or
+ *      HTTP status codes exist; they only see "data received successfully" or "an exception
+ *      with an error code was thrown". Switching to XMLHttpRequest or WebSocket later would
+ *      only require changes here.
+ *   3. **All errors are normalized into ApiError**. Callers only need to inspect error.code and
+ *      do not care whether the network failed, the request timed out, or the back-end returned
+ *      a business error.
  */
 
 /**
- * 统一的接口异常。
+ * Unified API exception.
  *
- * code 取值：
- *   · 后端返回的业务错误码，如 'INVALID_EXPRESSION'、'DIVISION_BY_ZERO'
- *   · 前端自己产生的 'NETWORK_ERROR'（连不上）、'TIMEOUT'（超时）、'BAD_RESPONSE'（响应格式不对）
+ * code values:
+ *   · business error code returned by the back-end, e.g. 'INVALID_EXPRESSION', 'DIVISION_BY_ZERO'
+ *   · front-end generated 'NETWORK_ERROR' (cannot connect), 'TIMEOUT' (timed out),
+ *     'BAD_RESPONSE' (malformed response)
  */
 class ApiError extends Error {
   /**
-   * @param {string} code 错误码
-   * @param {string} message 给用户看的中文说明
-   * @param {number} [status] HTTP 状态码（如果是业务错误）
+   * @param {string} code error code
+   * @param {string} message user-facing description
+   * @param {number} [status] HTTP status code (for business errors)
    */
   constructor(code, message, status) {
     super(message);
@@ -99,20 +106,20 @@ class ApiError extends Error {
 }
 
 /**
- * 发一个请求，返回响应体里的 data 部分。
+ * Send one request and return the data part of the response body.
  *
- * @param {string} path 接口路径，如 '/api/calculate'
+ * @param {string} path API path, e.g. '/api/calculate'
  * @param {{method?: string, body?: object}} [options]
- * @returns {Promise<any>} 后端返回的 data
- * @throws {ApiError} 任何失败情况
+ * @returns {Promise<any>} data returned by the back-end
+ * @throws {ApiError} any failure
  */
 async function request(path, options = {}) {
   const method = options.method || 'GET';
   const url = API_BASE_URL + path;
 
-  // 用 AbortController 实现超时。
-  // 为什么不用 fetch 自带的 signal 超时参数：那个还不支持得很广泛，
-  // AbortController 是标准做法，兼容性更好。
+  // Timeout implemented with AbortController.
+  // Why not fetch's built-in signal timeout option: it is not widely supported yet,
+  // while AbortController is the standard approach with better compatibility.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -131,29 +138,37 @@ async function request(path, options = {}) {
   try {
     response = await fetch(url, init);
   } catch (error) {
-    // fetch 只在网络层失败时抛异常（连不上、超时、被 CORS 拦、域名解析不了）
+    // fetch only throws when the network layer fails (cannot connect, timeout, blocked by CORS,
+    // DNS failure)
     if (error && error.name === 'AbortError') {
-      throw new ApiError('TIMEOUT', `请求超过 ${REQUEST_TIMEOUT_MS / 1000} 秒没有响应，请检查后端服务`);
+      throw new ApiError(
+        'TIMEOUT',
+        `Request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds. ` +
+          'Check the back-end service.',
+      );
     }
-    throw new ApiError('NETWORK_ERROR', '无法连接后端服务，请确认后端已启动');
+    throw new ApiError(
+      'NETWORK_ERROR',
+      'Cannot reach the back-end service. Make sure it is running.',
+    );
   } finally {
     clearTimeout(timer);
   }
 
-  // 204 No Content（删除成功）没有响应体，直接返回
+  // 204 No Content (successful deletion) has no response body, so return right away
   if (response.status === 204) {
     return null;
   }
 
-  // 解析响应体。即使状态码是错误，后端也会返回 JSON 说明原因，
-  // 所以要先把 body 读出来，再决定怎么处理。
+  // Parse the response body. Even for an error status the back-end returns JSON explaining
+  // the reason, so read the body first and decide how to handle it afterwards.
   let payload;
   try {
     payload = await response.json();
   } catch {
     throw new ApiError(
       'BAD_RESPONSE',
-      `后端返回的内容不是合法 JSON（HTTP ${response.status}）`,
+      `The back-end response is not valid JSON (HTTP ${response.status})`,
       response.status,
     );
   }
@@ -162,19 +177,20 @@ async function request(path, options = {}) {
     return payload.data;
   }
 
-  // 走到这里说明是错误。优先用后端给的错误码和说明 ——
-  // 因为后端的判断才是权威的（前端自己不判断表达式对不对）。
+  // Reaching this point means it is an error. Prefer the error code and message from the back-end —
+  // the back-end's judgement is authoritative (the front-end does not validate expressions itself).
   const code = (payload && payload.errorCode) || 'UNKNOWN_ERROR';
-  const message = (payload && payload.message) || `请求失败（HTTP ${response.status}）`;
+  const message = (payload && payload.message) || `Request failed (HTTP ${response.status})`;
   throw new ApiError(code, message, response.status);
 }
 
 /**
- * 提交表达式给后端计算。
+ * Submit an expression to the back-end for evaluation.
  *
- * ★ 这是整个前端唯一"要求结果"的地方。前端自己永远不算。
+ * This is the only place in the whole front-end that asks for a result.
+ * The front-end never computes one itself.
  *
- * @param {string} expression 表达式，ASCII 形式（* / - 而不是 × ÷ −）
+ * @param {string} expression expression in ASCII form (* / - instead of × ÷ −)
  * @returns {Promise<{expression: string, result: string, resultNumber: number}>}
  * @throws {ApiError}
  */
@@ -186,7 +202,7 @@ async function calculate(expression) {
 }
 
 /**
- * 拉取历史记录。
+ * Fetch the history records.
  *
  * @param {{limit?: number, keyword?: string}} [options]
  * @returns {Promise<{items: Array, total: number, limit: number, keyword: string}>}
@@ -206,18 +222,18 @@ async function fetchHistory(options = {}) {
 }
 
 /**
- * 删除一条历史记录。
+ * Delete one history record.
  *
  * @param {number} id
  * @returns {Promise<void>}
- * @throws {ApiError} 记录不存在时 code 为 'RECORD_NOT_FOUND'
+ * @throws {ApiError} code is 'RECORD_NOT_FOUND' when the record does not exist
  */
 async function deleteHistory(id) {
   await request('/api/history/' + encodeURIComponent(String(id)), { method: 'DELETE' });
 }
 
 /**
- * 清空全部历史。
+ * Clear the whole history.
  *
  * @returns {Promise<{deleted: number}>}
  * @throws {ApiError}
@@ -227,74 +243,79 @@ async function clearHistory() {
 }
 
 /**
- * 健康检查 —— 用来判断后端是否在线。
+ * Health check — used to tell whether the back-end is online.
  *
- * 为什么不复用其它接口：
- *   这个接口不查数据库、不做计算，永远秒回，
- *   适合在页面刚打开时快速判断"后端在不在"。
+ * Why not reuse another endpoint:
+ *   this one touches no database and does no computation, so it always answers instantly,
+ *   which makes it suitable for quickly telling "is the back-end there" right after the page opens.
  *
- * @returns {Promise<boolean>} 后端是否可用
+ * @returns {Promise<boolean>} whether the back-end is available
  */
 async function checkHealth() {
   try {
     await request('/api/health');
     return true;
   } catch {
-    // 健康检查失败不是"错误"，只是一种状态，所以不抛异常。
-    // 上层据此把状态丸改成"后端未连接"。
+    // A failed health check is not an "error", just a state, so no exception is thrown.
+    // The caller uses it to switch the status pill to "back-end not connected".
     return false;
   }
 }
 
 /**
- * 当前使用的后端地址（只读，供自动化测试断言配置被正确读取）。
+ * The back-end URL currently in use (read-only; lets automated tests assert that the config is
+ * read correctly).
  *
- * 为什么导出它：测试需要确认"前端到底在往哪个地址发请求"。
- * 部署时最常见的故障就是地址写错，而界面上完全看不出来。
+ * Why export it: the tests need to confirm which address the front-end actually sends requests to.
+ * The most common deployment failure is a wrong address, and it is completely invisible in the UI.
  */
 const API_BASE_URL_FOR_TEST = API_BASE_URL;
 
   return { ApiError, calculate, fetchHistory, deleteHistory, clearHistory, checkHealth, API_BASE_URL_FOR_TEST };
   })(API_BASE_URL, REQUEST_TIMEOUT_MS);
 
-  /* 把 api 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure api's exports into the bundling scope so later modules can reference them by name */
   const { ApiError, calculate, fetchHistory, deleteHistory, clearHistory, checkHealth, API_BASE_URL_FOR_TEST } = api;
 
-  /* ===== 源文件：src/js/input-model.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/input-model.js (generated, do not edit by hand) ===== */
   const model = (function () {
 /**
- * 表达式缓冲区 —— 计算器的"输入模型"。
+ * Expression buffer — the calculator's input model.
  *
- * 职责边界（很重要）：
- *   本模块只做**字符串层面的输入校验与拼装**，不解析、不求值、不产生任何计算结果。
- *   因为作业明确要求"最终计算结果必须由后端产生"，
- *   所以这里连一个 `+` 号运算都不允许出现，更不允许出现 eval/Function。
+ * Responsibility boundary (important):
+ *   This module only does **string-level input validation and assembly**;
+ *   it does not parse, evaluate, or produce any calculation result.
+ *   The assignment explicitly requires the final result to come from the back-end,
+ *   so not even a single `+` operation is allowed here, let alone eval/Function.
  *
- * 光标模型：表达式是一段文本 + 一个插入位置 cursor（0..text.length）。
- *   为简化实现，本版本所有输入都追加在末尾、退格从末尾删除，
- *   因此 cursor 恒等于 text.length —— 保留该字段是为了让后续做"中间插字"时不必重写调用方。
+ * Cursor model: an expression is a piece of text plus an insertion position cursor
+ * (0..text.length).
+ *   To keep the implementation simple, this version always appends input at the end and
+ *   deletes from the end on backspace, so cursor always equals text.length — the field is kept
+ *   so that adding "insert in the middle" later will not require rewriting callers.
  *
  * @typedef {object} BufferState
- * @property {string} text           表达式文本，内部用 * / 与 -，界面再映射成 × ÷ −
- * @property {number} cursor         插入位置
- * @property {string} message        给用户看的提示（正常时为空串）
+ * @property {string} text           Expression text; uses * / and - internally, mapped to × ÷ −
+ *                                   in the UI
+ * @property {number} cursor         Insertion position
+ * @property {string} message        Message shown to the user (empty string when normal)
  * @property {string} messageType    'hint' | 'error'
  */
 
-/** 允许出现在表达式内部的字符白名单 */
+/** Whitelist of characters allowed inside an expression */
 const ALLOWED_CHARS = '0123456789.+-*/()';
 
-/** 四则运算符 */
+/** Arithmetic operators */
 const OPERATORS = '+-*/';
 
-/** 表达式长度上限，防止无意义超长输入 */
+/** Maximum expression length, to prevent meaningless oversized input */
 const MAX_LENGTH = 60;
 
-/** 四种运算符，用于运算符键的"换键"行为 */
+/** The four operators, used for the "swap key" behavior of operator keys */
 const OPERATOR_SET = ['+', '-', '*', '/'];
 
 /**
- * 新建一个空缓冲区状态。
+ * Create a new empty buffer state.
  * @returns {BufferState}
  */
 function createState() {
@@ -302,7 +323,7 @@ function createState() {
 }
 
 /**
- * 生成一个带提示的状态副本（纯函数，不改原对象）。
+ * Return a copy of the state carrying a message (pure function, does not mutate the original).
  * @param {BufferState} state
  * @param {string} message
  * @param {string} [messageType]
@@ -313,8 +334,8 @@ function withMessage(state, message, messageType = 'hint') {
 }
 
 /**
- * 生成一个"输入被拒绝"的状态：文本不变，只给提示。
- * 所有校验失败都走这里，保证"拒绝输入"的行为只有一种实现。
+ * Build an "input rejected" state: the text is unchanged, only a message is attached.
+ * Every validation failure goes through here, so "reject input" has exactly one implementation.
  * @param {BufferState} state
  * @param {string} message
  * @returns {BufferState}
@@ -339,7 +360,7 @@ function lastChar(state) {
 }
 
 /**
- * 取末尾这一段连续数字/小数点，例如 '12+3.5' → '3.5'（没有则返回空串）。
+ * Take the trailing run of digits/decimal point, e.g. '12+3.5' → '3.5' (empty string if none).
  * @param {string} text
  * @returns {string}
  */
@@ -349,7 +370,7 @@ function trailingNumber(text) {
 }
 
 /**
- * 判断一个片段是不是合法数字：至少一位数字，且最多一个小数点。
+ * Check whether a segment is a valid number: at least one digit and at most one decimal point.
  * @param {string} segment
  * @returns {boolean}
  */
@@ -358,7 +379,7 @@ function isNumberSegment(segment) {
 }
 
 /**
- * 统计括号是否配对（左括号数 >= 右括号数即"目前还算合法"）。
+ * Check whether parentheses are balanced (left count >= right count means "still valid so far").
  * @param {string} text
  * @returns {{depth: number, balanced: boolean}}
  */
@@ -380,76 +401,79 @@ function parenInfo(text) {
 }
 
 /**
- * 供"="使用：判断当前表达式是否"可以提交给后端"。
- * 只做前端能负责任地判断的部分：非空、括号配对、不以运算符或小数点结尾。
+ * Used by "=": decide whether the current expression "can be submitted to the back-end".
+ * Only covers what the front-end can judge responsibly: non-empty, balanced parentheses,
+ * and not ending with an operator or a decimal point.
  * @param {string} text
  * @returns {{ok: true} | {ok: false, message: string}}
  */
 function canSubmit(text) {
   if (text === '') {
-    return { ok: false, message: '请输入表达式' };
+    return { ok: false, message: 'Enter an expression' };
   }
   const { depth } = parenInfo(text);
   if (depth !== 0) {
-    return { ok: false, message: '括号不匹配：还有 ' + depth + ' 个左括号没有闭合' };
+    return { ok: false, message: 'Unbalanced parentheses: ' + depth + ' left unclosed' };
   }
   const last = text.slice(-1);
   if (isOperator(last)) {
-    return { ok: false, message: '表达式不完整：结尾是运算符' };
+    return { ok: false, message: 'Incomplete expression: it ends with an operator' };
   }
   if (last === '.') {
-    return { ok: false, message: '表达式不完整：小数点后缺少数字' };
+    return { ok: false, message: 'Incomplete expression: no digits after the decimal point' };
   }
   if (last === '(') {
-    return { ok: false, message: '表达式不完整：左括号后缺少内容' };
+    return { ok: false, message: 'Incomplete expression: nothing after the left parenthesis' };
   }
   return { ok: true };
 }
 
 /**
- * 数字键：追加一位数字。
+ * Digit key: append one digit.
  * @param {BufferState} state
  * @param {string} digit
  * @returns {BufferState}
  */
 function inputDigit(state, digit) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
-  // 一位数字不能以 0 开头（'0' 本身除外），例如 0 后面直接按 5 得到 "05" 属于书写错误
+  // A number must not start with 0 (except '0' itself); e.g. pressing 5 right after 0 gives
+  // "05", which is a typo
   if (lastChar(state) === '0' && trailingNumber(state.text) === '0' && digit !== '.') {
-    return reject(state, '数字不能以 0 开头');
+    return reject(state, 'A number cannot start with 0');
   }
   return withMessage(
     { ...state, text: state.text + digit, cursor: state.text.length + 1 },
-    '按 = 让后端计算',
+    'Press = to calculate on the back end',
   );
 }
 
 /**
- * 小数点：同一个数字里最多一个。
+ * Decimal point: at most one per number.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputDot(state) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   if (trailingNumber(state.text).includes('.')) {
-    return reject(state, '同一个数字里只能有一个小数点');
+    return reject(state, 'A number can have only one decimal point');
   }
   if (lastChar(state) === ')') {
-    return reject(state, '右括号后不能直接跟小数点');
+    return reject(state, 'A decimal point cannot follow a right parenthesis');
   }
   const prefix = trailingNumber(state.text) === '' ? '0' : '';
   return withMessage(
     { ...state, text: state.text + prefix + '.', cursor: state.text.length + prefix.length + 1 },
-    '正在输入小数',
+    'Typing a decimal number',
   );
 }
 
 /**
- * 四则运算符：连续运算符只允许一个负号（用于表示负数）。
+ * Arithmetic operator: a run of consecutive operators may contain only one minus sign
+ * (to express a negative number).
  * @param {BufferState} state
  * @param {string} operator
  * @returns {BufferState}
@@ -459,147 +483,159 @@ function inputOperator(state, operator) {
 
   if (state.text === '') {
     if (operator === '-') {
-      return withMessage({ ...state, text: '-', cursor: 1 }, '正在输入负数');
+      return withMessage({ ...state, text: '-', cursor: 1 }, 'Typing a negative number');
     }
-    return reject(state, '表达式不能以 ' + operator + ' 开头');
+    return reject(state, 'An expression cannot start with ' + operator);
   }
 
-  // 连续运算符：把刚输入的运算符"换掉"，而不是追加。
-  // 这是真实计算器的常见行为，也顺手解决了"连续运算符"的合法性问题。
+  // Consecutive operators: replace the operator just entered instead of appending another one.
+  // This is typical behavior in real calculators, and it also settles the "consecutive
+  // operators" legality problem.
   if (isOperator(last)) {
     if (operator === '-' && last !== '-') {
       return withMessage(
         { ...state, text: state.text + '-' },
-        '这里的负号表示负数，如 3*-2',
+        'The minus here means a negative number, as in 3*-2',
       );
     }
     const swapped = state.text.slice(0, -1) + operator;
-    return withMessage({ ...state, text: swapped }, '已改为 ' + operator);
+    return withMessage({ ...state, text: swapped }, 'Changed to ' + operator);
   }
 
   if (last === '(') {
     if (operator === '-') {
-      return withMessage({ ...state, text: state.text + '-' }, '括号里的负数');
+      return withMessage(
+        { ...state, text: state.text + '-' },
+        'Negative number inside the parentheses',
+      );
     }
-    return reject(state, '左括号后不能直接跟运算符');
+    return reject(state, 'An operator cannot follow a left parenthesis');
   }
 
   if (last === '.') {
-    return reject(state, '小数点后需要先输入数字');
+    return reject(state, 'Enter a digit after the decimal point');
   }
 
   return withMessage(
     { ...state, text: state.text + operator, cursor: state.text.length + 1 },
-    '继续输入数字或用括号',
+    'Keep typing digits or use parentheses',
   );
 }
 
 /**
- * 左括号：数字或右括号后面补左括号时自动补一个乘号（隐式乘法）。
+ * Left parenthesis: when it follows a digit or a right parenthesis, an implicit multiplication
+ * sign is inserted.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputLeftParen(state) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   const last = lastChar(state);
   const needsMultiply = isDigit(last) || last === ')' || last === '.';
   const addition = needsMultiply ? '*(' : '(';
   return withMessage(
     { ...state, text: state.text + addition, cursor: state.text.length + addition.length },
-    needsMultiply ? '已在数字与括号之间补上乘号' : '括号里可以写子表达式',
+    needsMultiply
+      ? 'Inserted a multiplication sign between the number and the parenthesis'
+      : 'A sub-expression can go inside the parentheses',
   );
 }
 
 /**
- * 右括号：必须先有未闭合的左括号，且不能紧跟运算符或左括号。
+ * Right parenthesis: an unclosed left parenthesis must exist, and it must not directly follow
+ * an operator or a left parenthesis.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputRightParen(state) {
   const { depth } = parenInfo(state.text);
   if (depth === 0) {
-    return reject(state, '没有可以配对的左括号');
+    return reject(state, 'No matching left parenthesis');
   }
   const last = lastChar(state);
   if (isOperator(last) || last === '(') {
-    return reject(state, '右括号前缺少数字');
+    return reject(state, 'Missing a number before the right parenthesis');
   }
   return withMessage(
     { ...state, text: state.text + ')', cursor: state.text.length + 1 },
-    depth === 1 ? '括号已闭合' : '还剩 ' + (depth - 1) + ' 个左括号',
+    depth === 1 ? 'Parenthesis closed' : 'Left parentheses still open: ' + (depth - 1),
   );
 }
 
 /**
- * 取负时统一写成 (-数字) 这种带括号的形式，而不是直接插一个 '-'。
- * 原因：'5+-3' 这种写法虽然多数解析器能接受，但语义上依赖解析器的宽容度；
- *      写成 '5+(-3)' 则对任何后端解析器都是无歧义的。
+ * Negation is always written in the parenthesized form (-number) rather than inserting a bare '-'.
+ * Reason: although '5+-3' is accepted by most parsers, its meaning depends on parser leniency;
+ *      '5+(-3)' is unambiguous for any back-end parser.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function toggleSign(state) {
   const text = state.text;
 
-  // 情况一：末尾是 (-数字) —— 反操作，整体去掉括号与负号
+  // Case 1: the tail is (-number) — the inverse operation, dropping both the parentheses and
+  // the minus sign
   const wrapped = text.match(/\(-(\d+(?:\.\d+)?)\)$/);
   if (wrapped) {
     const next = text.slice(0, wrapped.index) + wrapped[1];
     return withMessage(
       { ...state, text: next, cursor: next.length },
-      '已去掉负号',
+      'Minus sign removed',
     );
   }
 
-  // 情况二：末尾是普通数字 —— 加上括号与负号
+  // Case 2: the tail is a plain number — wrap it in parentheses and add a minus sign
   const tail = trailingNumber(text);
   if (tail === '' || !isNumberSegment(tail)) {
-    return reject(state, '请先输入一个完整的数字再按 ± ');
+    return reject(state, 'Enter a complete number before pressing ±');
   }
 
   const before = text.slice(0, text.length - tail.length);
   const next = before + '(-' + tail + ')';
   if (next.length > MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   return withMessage(
     { ...state, text: next, cursor: next.length },
-    '已取负（用括号包住，避免歧义）',
+    'Negated (wrapped in parentheses to avoid ambiguity)',
   );
 }
 
 /**
- * 退格：删除末尾一个字符。
+ * Backspace: delete one character from the end.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function backspace(state) {
   if (state.text === '') {
-    return withMessage(state, '已经是空的');
+    return withMessage(state, 'Already empty');
   }
-  // 形如 ...(-5) 时，一次退格删掉整个括号组更符合直觉
+  // For a tail like ...(-5), deleting the whole parenthesized group in one backspace is more
+  // intuitive
   const trimmed = state.text.replace(/\(-\d+(\.\d+)?\)$/, (match) => match.slice(2, -1));
   const next = trimmed === state.text ? state.text.slice(0, -1) : trimmed;
   return withMessage({ ...state, text: next, cursor: next.length }, '');
 }
 
 /**
- * 清空。
+ * Clear.
  * @returns {BufferState}
  */
 function clear() {
-  return withMessage(createState(), '已清空');
+  return withMessage(createState(), 'Cleared');
 }
 
 /**
- * 单一入口：把一个"按键语义"应用到缓冲区状态上（纯函数，不改原对象）。
+ * Single entry point: apply one "key semantic" to the buffer state (pure function, does not
+ * mutate the original).
  *
- * 之所以所有输入都走这一个函数，是因为鼠标点击和物理键盘必须走同一套规则；
- * 只要它们都调用 applyKey，就不可能出现在一边合法、在另一边非法的情况。
+ * Every kind of input goes through this one function because mouse clicks and the physical keyboard
+ * must follow the same rule set; as long as both call applyKey, a key can never be legal on
+ * one path and illegal on the other.
  *
  * @param {BufferState} state
- * @param {string} key  数字、'.'、'+ - * /'、'(' ')'、'AC'、'BACK'、'NEG'
+ * @param {string} key  digit, '.', '+ - * /', '(' ')', 'AC', 'BACK', 'NEG'
  * @returns {BufferState}
  */
 function applyKey(state, key) {
@@ -631,27 +667,29 @@ function applyKey(state, key) {
   if (key.length === 1 && OPERATOR_SET.includes(key)) {
     return inputOperator(state, key);
   }
-  return reject(state, '不支持的按键：' + key);
+  return reject(state, 'Unsupported key: ' + key);
 }
 
   return { ALLOWED_CHARS, OPERATORS, MAX_LENGTH, createState, trailingNumber, isNumberSegment, parenInfo, canSubmit, applyKey };
   })();
 
-  /* 把 model 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure model's exports into the bundling scope so later modules can reference them by name */
   const { ALLOWED_CHARS, OPERATORS, MAX_LENGTH, createState, trailingNumber, isNumberSegment, parenInfo, canSubmit, applyKey } = model;
 
-  /* ===== 源文件：src/js/ui.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/ui.js (generated, do not edit by hand) ===== */
   const ui = (function () {
 /**
- * 渲染层 —— 唯一允许直接修改 DOM 的模块。
+ * Render layer — the only module allowed to modify the DOM directly.
  *
- * 为什么要把 DOM 操作集中在一个文件里：
- *   界面元素一旦分散在多个模块里被各处修改，出现显示不一致时很难定位。
- *   这里对外只暴露 render / flashKey / setBackendStatus 三个函数，
- *   其余模块（按钮、键盘）只负责"把状态算出来"，不碰 DOM。
+ * Why DOM operations belong in a single file:
+ *   once UI elements are modified from several modules, a display inconsistency is hard to pin
+ *   down.
+ *   This module exposes only render / flashKey / setBackendStatus to the outside;
+ *   the other modules (buttons, keyboard) only work out the state and never touch the DOM.
  *
- * 安全约定：本项目全程使用 textContent，不使用 innerHTML。
- *   即使表达式里出现 < > 等字符，也只会被当成普通文本显示，不会变成 HTML。
+ * Safety convention: this project uses textContent everywhere and never innerHTML.
+ *   Even if an expression contains characters like < >, they are shown as plain text and never
+ *   become HTML.
  */
 
 /** @type {HTMLElement} */ const expressionEl = document.getElementById('expression');
@@ -660,18 +698,20 @@ function applyKey(state, key) {
 /** @type {HTMLElement} */ const keysPanel = document.getElementById('keys');
 /** @type {HTMLElement} */ const backendTextEl = document.getElementById('backend-text');
 
-/** 表达式为空时的占位文字（存放在 data 属性里，由 CSS 渲染） */
-const PLACEHOLDER = '输入表达式';
+/** Placeholder text for an empty expression (stored in a data attribute and rendered by CSS) */
+const PLACEHOLDER = 'Enter an expression';
 
 /**
- * 光标锚点：一个零宽空格。
- * 渲染时用它把文本切成两段，在中间插入光标元素 —— 这样就不需要 innerHTML。
+ * Caret anchor: a zero-width space.
+ * Rendering splits the text into two parts around it and inserts the caret element in between —
+ * so innerHTML is never needed.
  */
 const CARET_ANCHOR = '\u200b';
 
 /**
- * 把内部表达式映射成界面显示形式：* → ×，/ → ÷，- → −（减号）。
- * 只做显示替换，长度一一对应，因此不影响光标位置计算。
+ * Map the internal expression to its UI form: * → ×, / → ÷, - → − (minus sign).
+ * The replacement is display-only and length-preserving, so it does not affect the caret
+ * position math.
  * @param {string} text
  * @returns {string}
  */
@@ -679,13 +719,13 @@ function toDisplayText(text) {
   return text.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
 }
 
-/** @type {number} 闪烁定时器，避免重复启动多个计时器 */
+/** @type {number} Flash timer, kept so repeated calls do not start several timers */
 let flashTimer = 0;
 
 /**
- * 渲染整个显示屏。
+ * Render the whole display.
  * @param {{text: string, cursor: number, message: string, messageType: string}} state
- * @param {{value: string, isPlaceholder: boolean}} display 结果行内容
+ * @param {{value: string, isPlaceholder: boolean}} display result line content
  */
 function render(state, display) {
   renderExpression(state);
@@ -694,7 +734,7 @@ function render(state, display) {
 }
 
 /**
- * 渲染表达式行与光标。用零宽空格作锚点切成两段，不用 innerHTML。
+ * Render the expression line and the caret. A zero-width space anchors the split, so no innerHTML.
  * @param {{text: string, cursor: number}} state
  */
 function renderExpression(state) {
@@ -719,7 +759,7 @@ function renderExpression(state) {
 }
 
 /**
- * 渲染结果行。
+ * Render the result line.
  * @param {{value: string, isPlaceholder: boolean}} display
  */
 function renderResult(display) {
@@ -728,7 +768,7 @@ function renderResult(display) {
 }
 
 /**
- * 渲染提示条。messageType 为 'error' 时变红。
+ * Render the message bar. It turns red when messageType is 'error'.
  * @param {string} message
  * @param {string} messageType
  */
@@ -738,9 +778,9 @@ function renderMessage(message, messageType) {
 }
 
 /**
- * 让某个按键闪一下"按下"效果。
- * 用途：物理键盘没有 :active 伪类，只能由脚本补上视觉反馈，
- *      让"键盘输入"和"鼠标点击"的观感一致。
+ * Make a key flash its "pressed" effect.
+ * Purpose: the physical keyboard has no :active pseudo-class, so the script supplies the visual
+ *       feedback and "keyboard input" looks the same as "mouse click".
  * @param {string} key
  */
 function flashKey(key) {
@@ -756,8 +796,8 @@ function flashKey(key) {
 }
 
 /**
- * 高亮"当前正在生效的运算符"，没有则全部取消高亮。
- * 这是 CSS 伪类做不到的：鼠标移开之后仍然要保持可见。
+ * Highlight the operator currently in effect, or clear all highlighting when there is none.
+ * This is something CSS pseudo-classes cannot do: it must stay visible after the mouse moves away.
  * @param {string|null} operator
  */
 function setArmedOperator(operator) {
@@ -768,41 +808,41 @@ function setArmedOperator(operator) {
 }
 
 /**
- * 后端错误码 → 给用户看的中文说明。
- * 这张表放在前端，是为了把「后端返回的错误码」翻译成人话；
- * 判断对错的权力始终在后端，前端只负责显示。
+ * Back-end error code → user-facing description.
+ * The table lives in the front-end to turn the error code returned by the back-end into plain
+ * language; deciding what is valid is always the back-end's job, the front-end only displays it.
  * @type {Record<string, string>}
  */
 const SERVER_ERROR_TEXT = {
-  INVALID_EXPRESSION: '表达式不合法，请检查括号与运算符',
-  DIVISION_BY_ZERO: '除数不能为 0',
-  EXPRESSION_TOO_LONG: '表达式过长，请拆开计算',
-  RECORD_NOT_FOUND: '这条历史记录不存在或已被删除',
-  BAD_REQUEST: '请求格式不正确',
-  INTERNAL_ERROR: '服务器内部错误，请稍后再试',
+  INVALID_EXPRESSION: 'Invalid expression. Check the parentheses and operators.',
+  DIVISION_BY_ZERO: 'Division by zero is not allowed',
+  EXPRESSION_TOO_LONG: 'Expression is too long. Split it up.',
+  RECORD_NOT_FOUND: 'This history record does not exist or has already been deleted.',
+  BAD_REQUEST: 'Malformed request',
+  INTERNAL_ERROR: 'Internal server error. Try again later.',
 };
 
 /**
- * 显示后端返回的错误。
+ * Show an error returned by the back-end.
  *
- * 正常调用路径（前后端联调阶段）：
- *   const data = await response.json();
- *   if (!data.success) { showServerError(data.errorCode); }
- *
- * 现在后端还没接通，所以它暂时只被截图脚本调用，用来演示错误提示的样子。
- * 这样截图里的文案与将来真实联调时完全一致，等后端做好不用回头补图。
+ * Call path: app.js's handleApiError() receives the business error code from the back-end and
+ * calls this, which turns the code into text using the table below and resets the result line
+ * to the placeholder.
+ *   · Why use this table instead of the message the back-end sends directly:
+ *     the wording stays centralized, so the front-end does not change appearance whenever the
+ *     back-end edits a message.
  *
  * @param {string} errorCode
  */
 function showServerError(errorCode) {
-  const text = SERVER_ERROR_TEXT[errorCode] || '计算失败：' + errorCode;
+  const text = SERVER_ERROR_TEXT[errorCode] || 'Calculation failed: ' + errorCode;
   renderMessage(text, 'error');
   resultEl.textContent = '—';
   resultEl.classList.add('is-placeholder');
 }
 
 /**
- * 更新右下角的后端连接状态文字。
+ * Update the back-end connection status text in the bottom right corner.
  * @param {string} text
  */
 function setBackendStatus(text) {
@@ -810,16 +850,16 @@ function setBackendStatus(text) {
 }
 
 /**
- * 更新后端状态指示点的颜色。
+ * Update the color of the back-end status dot.
  *
- * 三个状态：
- *   'online'   绿点 —— 后端可用
- *   'offline'  红点 —— 连不上后端
- *   'unknown'  灰点 —— 还没检查过
+ * Three states:
+ *   'online'   green dot — back-end available
+ *   'offline'  red dot   — cannot reach the back-end
+ *   'unknown'  grey dot  — not checked yet
  *
- * 为什么状态点要单独一个函数：
- *   文字和颜色是两件事 —— 文字可能因为别的原因变化，
- *   而颜色只反映连通性。分开之后互不干扰。
+ * Why the dot needs its own function:
+ *   text and color are two separate things — the text may change for other reasons,
+ *   while the color only reflects connectivity. Kept apart, they do not interfere.
  *
  * @param {'online'|'offline'|'unknown'} state
  */
@@ -832,16 +872,18 @@ function setBackendDot(state) {
   panel.classList.toggle('is-offline', state === 'offline');
 }
 
-// 截图脚本的注入入口。之所以挂在 window 上而不是写进业务代码，
-// 是为了让"演示用的假数据"与"真实业务逻辑"分开，联调时删掉这一行即可。
+// Injection point for the screenshot scripts. It hangs off window rather than living in the
+// business code so that "fake data for the demo" stays separate from "real business logic";
+// delete this line during integration.
 window.__demoServerError = (errorCode) => {
   showServerError(errorCode);
-  setBackendStatus('后端错误响应（演示数据）');
+  setBackendStatus('Back-end error response (demo data)');
 };
 
 /**
- * 由"="按钮调用：在结果行给出一个明确、诚实的提示。
- * 后端接通之前，前端不产生任何计算结果，所以这里只更新提示文字。
+ * Called by the "=" button: give an explicit, honest message on the result line.
+ * Until the back-end is connected the front-end produces no calculation result, so this only
+ * updates the text.
  * @param {string} message
  */
 function showMessage(message) {
@@ -849,7 +891,8 @@ function showMessage(message) {
 }
 
 /**
- * 把 data-key 里的特殊字符转义，安全地拼进属性选择器。
+ * Escape the special characters in data-key so they can be safely embedded into an attribute
+ * selector.
  * @param {string} value
  * @returns {string}
  */
@@ -860,26 +903,27 @@ function cssEscape(value) {
   return { toDisplayText, render, flashKey, setArmedOperator, setBackendStatus, setBackendDot, showMessage, showServerError };
   })();
 
-  /* 把 ui 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure ui's exports into the bundling scope so later modules can reference them by name */
   const { toDisplayText, render, flashKey, setArmedOperator, setBackendStatus, setBackendDot, showMessage, showServerError } = ui;
 
-  /* ===== 源文件：src/js/history.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/history.js (generated, do not edit by hand) ===== */
   const history = (function (HISTORY_EXPRESSION_MAX_LENGTH) {
 /**
- * 历史记录渲染层 —— 负责把后端返回的历史列表画到右侧卡片里。
+ * History rendering layer — draws the history list returned by the back-end into the card on
+ * the right.
  *
- * 和 ui.js 一样，本模块是"哑"的：它只负责显示传进来的数据，
- * 不自己发请求。发请求是 app.js 的事。
+ * Like ui.js, this module is "dumb": it only displays the data handed to it and never issues
+ * requests itself. Requesting is app.js's job.
  *
- * 为什么这样分：
- *   如果把 fetch 也写在这里，就变成"渲染函数偷偷发网络请求"，
- *   测试时没法脱离后端，而且"什么时候刷新"这件事会散落各处。
- *   分开之后，刷新时机由 app.js 统一决定。
+ * Why split it this way:
+ *   putting fetch in here too would mean "a render function secretly makes network requests",
+ *   tests could not run without a back-end, and the question of "when to refresh" would be
+ *   scattered everywhere. Split apart, app.js decides refresh timing in one place.
  *
- * ★ 删除按钮用事件委托实现 —— 和键盘区同样的思路：
- *   整个列表**只挂一个** click 监听器。
- *   理由也一样：列表项是动态生成的，而且以后可能加分页，
- *   给每一项各绑一个监听器既浪费又容易漏。
+ * The delete button uses event delegation — the same idea as the keypad:
+ *   the whole list carries **exactly one** click listener.
+ *   The reason is the same: list items are created dynamically and pagination may be added later,
+ *   so binding a listener per item is both wasteful and easy to get wrong.
  */
 
 /** @type {HTMLElement} */ const listEl = document.getElementById('history-list');
@@ -887,13 +931,13 @@ function cssEscape(value) {
 /** @type {HTMLElement} */ const countEl = document.getElementById('history-count');
 
 /**
- * 删除记录的回调，由 app.js 注入。
+ * Delete callback, injected by app.js.
  * @type {(id: number) => void}
  */
 let onDelete = () => {};
 
 /**
- * 设置删除回调。
+ * Set the delete callback.
  * @param {(id: number) => void} handler
  */
 function setDeleteHandler(handler) {
@@ -901,9 +945,9 @@ function setDeleteHandler(handler) {
 }
 
 /**
- * 把界面显示的符号转回 ASCII，用于在历史里展示运算符。
- * 历史里我们**原样显示**用户当初输入的 ASCII 形式（去后端时用的形式），
- * 但为了可读性把 * / - 换成 × ÷ −，与计算器显示屏保持一致。
+ * Convert the UI symbols back to ASCII, used to display operators in the history.
+ * In the history we show the ASCII form exactly as the user typed it (the form sent to the
+ * back-end), but for readability * / - are rendered as × ÷ − to match the calculator display.
  * @param {string} text
  * @returns {string}
  */
@@ -915,17 +959,17 @@ function toDisplay(text) {
 }
 
 /**
- * 把 ISO 时间截成 "MM-DD HH:MM"。
+ * Trim an ISO timestamp down to "MM-DD HH:MM".
  *
- * 为什么不直接用 new Date().toLocaleString()：
- *   那个会跟随系统区域设置，不同电脑显示不一样，
- *   截图和博客里的样子就不统一了。这里手工截取，保证各处一致。
+ * Why not just use new Date().toLocaleString():
+ *   that follows the system locale, so different machines display it differently and the
+ *   screenshots would not match the blog post. Trimming by hand keeps it consistent everywhere.
  * @param {string} iso
  * @returns {string}
  */
 function formatTime(iso) {
   const text = String(iso || '');
-  // 格式形如 2026-09-29T15:20:11
+  // Format looks like 2026-09-29T15:20:11
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if (!match) {
     return text;
@@ -934,7 +978,7 @@ function formatTime(iso) {
 }
 
 /**
- * 截断过长的表达式，避免把列表撑破。
+ * Truncate an over-long expression so it cannot break the list layout.
  * @param {string} text
  * @returns {string}
  */
@@ -947,7 +991,7 @@ function truncate(text) {
 }
 
 /**
- * 设置状态文字（空列表、加载中、出错都走这里）。
+ * Set the status text (empty list, loading and errors all go through here).
  * @param {string} text
  * @param {'info'|'error'} [type]
  */
@@ -957,27 +1001,30 @@ function setStatus(text, type = 'info') {
 }
 
 /**
- * 渲染历史列表。
+ * Render the history list.
  *
  * @param {Array<{id: number, expression: string, result: string, createdAt: string}>} items
- * @param {number} total 后端报告的总条数（可能大于当前显示的条数）
+ * @param {number} total total count reported by the back-end (may exceed the number currently
+ *   displayed)
  */
 function renderList(items, total) {
   listEl.textContent = '';
 
-  // 顶部条数提示
+  // Item count at the top
   if (total > items.length) {
-    countEl.textContent = `显示 ${items.length} / 共 ${total} 条`;
+    countEl.textContent = `Showing ${items.length} of ${total}`;
   } else {
-    countEl.textContent = total > 0 ? `共 ${total} 条` : '';
+    countEl.textContent = total > 0 ? `Total: ${total}` : '';
   }
 
   if (items.length === 0) {
     return;
   }
 
-  // 用 DocumentFragment 一次性插入：避免每加一条就触发一次页面重排。
-  // 列表短的时候差别看不出来，但这是好习惯，而且注释能说明为什么这么写。
+  // Insert everything at once with a DocumentFragment: avoids triggering a page reflow for
+  // every item.
+  // The difference is invisible on a short list, but it is a good habit and this comment
+  // explains why.
   const fragment = document.createDocumentFragment();
 
   for (const item of items) {
@@ -990,10 +1037,10 @@ function renderList(items, total) {
 
     const expression = document.createElement('p');
     expression.className = 'history__expression';
-    // ★ 全程用 textContent，不用 innerHTML —— 表达式是用户输入的内容，
-    //   里面可能出现 < > 等字符，用 textContent 天然免疫 XSS。
+    // textContent everywhere, never innerHTML — the expression is user input and
+    //   may contain characters like < >; textContent is naturally immune to XSS.
     expression.textContent = truncate(toDisplay(item.expression));
-    expression.title = item.expression; // 悬停显示完整表达式
+    expression.title = item.expression; // Show the full expression on hover
 
     const result = document.createElement('p');
     result.className = 'history__result';
@@ -1013,9 +1060,9 @@ function renderList(items, total) {
     remove.type = 'button';
     remove.className = 'history__delete';
     remove.dataset.deleteId = String(item.id);
-    remove.title = '删除这条记录';
-    remove.textContent = '删除';
-    remove.setAttribute('aria-label', `删除记录 ${item.expression}`);
+    remove.title = 'Delete this record';
+    remove.textContent = 'Delete';
+    remove.setAttribute('aria-label', `Delete record ${item.expression}`);
 
     meta.append(time, remove);
     li.append(main, meta);
@@ -1026,18 +1073,18 @@ function renderList(items, total) {
 }
 
 /**
- * 清空列表（用于出错时把旧内容抹掉，避免显示过期数据）。
+ * Clear the list (used on error to wipe stale content instead of showing outdated data).
  */
 function clearList() {
   listEl.textContent = '';
   countEl.textContent = '';
 }
 
-// ---------------------------------------------------------------- 事件委托
+// ---------------------------------------------------------------- Event delegation
 //
-// 整个列表只挂一个监听器。
-// 列表项由 renderList 动态创建，所以必须在**父元素**上监听 ——
-// 这也正是事件委托的典型使用场景。
+// The whole list carries a single listener.
+// List items are created dynamically by renderList, so the listener must sit on the
+// **parent** element — which is exactly the typical use case for event delegation.
 listEl.addEventListener('click', (event) => {
   const button = event.target instanceof Element ? event.target.closest('[data-delete-id]') : null;
   if (!(button instanceof HTMLElement) || !listEl.contains(button)) {
@@ -1049,7 +1096,7 @@ listEl.addEventListener('click', (event) => {
     return;
   }
 
-  // 删除中的视觉反馈：禁用按钮，防止用户连点两次
+  // Visual feedback while deleting: disable the button so a double click cannot fire twice
   button.disabled = true;
   button.textContent = '…';
 
@@ -1059,67 +1106,73 @@ listEl.addEventListener('click', (event) => {
   return { setDeleteHandler, setStatus, renderList, clearList };
   })(HISTORY_EXPRESSION_MAX_LENGTH);
 
-  /* 把 history 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure history's exports into the bundling scope so later modules can reference them by name */
   const { setDeleteHandler, setStatus, renderList, clearList } = history;
 
-  /* ===== 源文件：src/js/calc-buttons.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/calc-buttons.js (generated, do not edit by hand) ===== */
   const buttons = (function (createState, applyKey, canSubmit, render, setArmedOperator, flashKey) {
 /**
- * ★ 事件驱动核心 —— 按钮交互与事件委托。
+ * Event-driven core — button interaction and event delegation.
  *
- * 本文件回答课堂上点名要理解的那个问题：**事件是怎么驱动界面的**。
+ * This file answers the question the class explicitly asked about: **how events drive the UI**.
  *
- * 做法：整个键盘区（#keys）只注册 **一个** click 监听器。
- *   - 不给 27 个按钮各写一个 onclick；
- *   - 也不写 document.onclick 那种全局监听。
+ * Approach: the whole keypad (#keys) registers **one** single click listener.
+ *   - not one onclick per each of the 21 keypad buttons;
+ *   - and no global document.onclick either.
  *
- * 为什么用事件委托，而不是"每个按钮各绑一个处理函数"：
- *   1. 一个入口。所有按键最终都调用同一个 handleKey，规则不可能在某个按钮上漏掉。
- *   2. 加键不用改代码。以后要加 √ 或 x²，只要在 HTML 里补一个带 data-key 的按钮即可。
- *   3. 动态渲染也不失效。若以后按键由后端配置或由 JS 生成，监听器依然有效 ——
- *      因为监听的是父元素，事件会从子元素"冒泡"上来。
- *   4. 内存更省。27 个监听器变 1 个。
- *   代价：需要在处理函数里用 closest() 判断"到底点到了谁"。
+ * Why event delegation instead of "bind a handler to every button":
+ *   1. One entry point. Every key ends up in the same handleKey, so a rule cannot be missed on
+ *      one button.
+ *   2. Adding a key needs no code change. To add √ or x² later, just add a button with data-key
+ *      in the HTML.
+ *   3. It survives dynamic rendering. If keys later come from back-end config or are generated
+ *      by JS, the listener still works — because it listens on the parent element and events
+ *      "bubble" up from the children.
+ *   4. Less memory. 21 listeners become 1.
+ *   The cost: the handler must use closest() to work out "what was actually clicked".
  */
 
 
 /**
- * ★ 为什么这里 import 的是一个个函数，而不是 `import * as ui`：
- *   打包器（tools/build-bundle.mjs）把每个模块包成 IIFE，
- *   依赖是以**函数参数**的形式传进去的（形如 `function (render, flashKey) {...}`）。
- *   所以模块内部只能用这些名字，写成 render(...) 会解析不到 ui 这个名字。
- *   这一点在打包时踩过一次：整包抛 ReferenceError，页面完全没反应。
+ * Why individual functions are imported here instead of `import * as ui`:
+ *   the bundler (tools/build-bundle.mjs) wraps each module in an IIFE and passes dependencies
+ *   as **function parameters** (of the form `function (render, flashKey) {...}`).
+ *   A module can therefore only use those names; writing render(...) would fail to resolve the
+ *   name ui.
+ *   Get this wrong at bundle time and the whole bundle throws a ReferenceError and the page does
+ *   nothing at all.
  */
 
-/** 前端自己的状态：表达式缓冲区 */
+/** The front-end's own state: the expression buffer */
 let state = createState();
 
 /**
- * 结果行的当前内容。
+ * Current content of the result line.
  *
- * 为什么放在这里而不是写死一个常量：
- *   联调之后结果行要显示"后端返回的结果"或"计算失败"，
- *   也就是会变。由 app.js 通过 setResult 更新。
+ * Why it lives here instead of being a hard-coded constant:
+ *   after integration the result line shows "the result returned by the back-end" or
+ *   "calculation failed", so it changes. app.js updates it through setResult.
  *
- * isPlaceholder 的作用：为 true 时用灰色小字，
- * 与"真实结果"在视觉上区分开（用户一眼能看出这是提示不是答案）。
+ * What isPlaceholder does: when true the text is small and grey, visually distinguishing it from a
+ * real result (the user can tell at a glance that this is a hint, not an answer).
  */
 let display = { value: '—', isPlaceholder: true };
 
 /**
- * "提交计算"的回调，由 app.js 注入。
+ * The "submit calculation" callback, injected by app.js.
  *
- * ★ 为什么要用注入而不是在这里直接 import app.js：
- *   如果在 calc-buttons 里 import app，而 app 又需要调用 calc-buttons 的入口，
- *   就形成了循环依赖。用注入的方式，依赖是单向的：app → calc-buttons。
- *   好处还有一个：做测试时可以塞一个假的提交函数进来，不需要真的后端。
+ * Why injection rather than importing app.js directly here:
+ *   if calc-buttons imported app while app needed to call calc-buttons' entry point, that would
+ *   create a circular dependency. With injection the dependency is one-way: app → calc-buttons.
+ *   There is a second benefit: a test can pass in a fake submit function and does not need a
+ *   real back-end.
  *
  * @type {(expression: string) => void}
  */
 let onSubmit = () => {};
 
 /**
- * 设置提交回调。
+ * Set the submit callback.
  * @param {(expression: string) => void} handler
  */
 function setSubmitHandler(handler) {
@@ -1127,9 +1180,9 @@ function setSubmitHandler(handler) {
 }
 
 /**
- * 更新结果行。
- * @param {string} value 要显示的文字
- * @param {boolean} [isPlaceholder] 是否是占位提示（而非真实结果）
+ * Update the result line.
+ * @param {string} value text to display
+ * @param {boolean} [isPlaceholder] whether this is a placeholder hint (rather than a real result)
  */
 function setResult(value, isPlaceholder = false) {
   display = { value, isPlaceholder };
@@ -1137,7 +1190,7 @@ function setResult(value, isPlaceholder = false) {
 }
 
 /**
- * 读取当前表达式（ASCII 形式）。
+ * Read the current expression (ASCII form).
  * @returns {string}
  */
 function getExpression() {
@@ -1145,16 +1198,18 @@ function getExpression() {
 }
 
 /**
- * 唯一的按键处理入口。
- * 鼠标点击、物理键盘、以及以后的任何输入源，都必须调用它。
+ * The single key handling entry point.
+ * Mouse clicks, the physical keyboard, and any future input source must call it.
  *
- * @param {string} key 按键语义，见 input-model.js 的 applyKey
- * @param {{flash?: boolean}} [options] flash=true 时让按键闪一下（供物理键盘使用）
+ * @param {string} key key semantic, see applyKey in input-model.js
+ * @param {{flash?: boolean}} [options] when flash=true the key flashes (used by the physical
+ *   keyboard)
  */
 function handleKey(key, options = {}) {
   state = applyKey(state, key);
 
-  // 只有当表达式真的以运算符结尾时才保持高亮；输入被拒绝时取消全部高亮
+  // Keep the highlight only when the expression really ends with an operator; clear all
+  // highlighting when input was rejected
   const armed = isOperatorKey(key) ? lastOperator(state.text) : null;
 
   render(state, display);
@@ -1165,7 +1220,7 @@ function handleKey(key, options = {}) {
 }
 
 /**
- * 是否是四则运算符键。
+ * Whether this is an arithmetic operator key.
  * @param {string} key
  * @returns {boolean}
  */
@@ -1174,7 +1229,7 @@ function isOperatorKey(key) {
 }
 
 /**
- * 取表达式末尾的运算符（末尾不是运算符时返回 null）。
+ * Take the operator at the end of the expression (null when the last character is not an operator).
  * @param {string} text
  * @returns {string|null}
  */
@@ -1184,37 +1239,41 @@ function lastOperator(text) {
 }
 
 /**
- * 按 "=" 的处理：先做前端能负责的输入校验，通过了就交给后端。
+ * Handling for "=": run the input validation the front-end is responsible for first, then hand
+ * off to the back-end.
  *
- * ★ 这里**没有、也永远不会有任何计算**。作业的硬性要求是
- *   "最终计算结果必须由后端产生并返回给前端"，所以这一步只做两件事：
-     ① 拦住前端**能确定**的错误（空表达式、括号没闭合、结尾是运算符）——
-        这类错误没必要浪费一次网络请求；
-     ② 把表达式交给 onSubmit（app.js 注入），由它去调用后端接口。
+ * There is **no, and never will be any calculation** here. The assignment's hard requirement is
+ *   "the final result must be produced by the back-end and returned to the front-end", so this
+ *   step does exactly two things:
+     1. block errors the front-end **can be certain about** (empty expression, unclosed
+        parentheses, trailing operator) —
+        such errors are not worth wasting a network request on;
+     2. hand the expression to onSubmit (injected by app.js), which calls the back-end API.
  *
- * 为什么前端只拦"能确定的"：
- *   语法和语义层的判断权在后端。前端如果也去判断，两边规则一旦不一致，
- *   就会出现"前端说非法、后端说合法"的矛盾。
+ * Why the front-end only blocks what it "can be certain about":
+ *   syntax and semantics are the back-end's call. If the front-end judged them as well and the two
+ *   rule sets ever diverged, we would get contradictions like "the front-end says invalid,
+ *   the back-end says valid".
  */
 function evaluate() {
   const check = canSubmit(state.text);
 
   if (!check.ok) {
-    // 前端能确定的错误：只提示，不发请求
+    // An error the front-end can be certain about: show a hint only, send no request
     state = { ...state, message: check.message, messageType: 'error' };
     render(state, display);
     setArmedOperator(null);
     return;
   }
 
-  // 交给后端。注意这里**没有**动 display ——
-  // 结果行会由 app.js 在拿到后端响应后通过 setResult 更新。
+  // Hand it to the back-end. Note that display is **not** touched here —
+  // app.js updates the result line through setResult once the back-end responds.
   onSubmit(state.text);
   setArmedOperator(null);
 }
 
 /**
- * 更新提示条文字（供 app.js 在请求过程中/失败后调用）。
+ * Update the message bar text (called by app.js while a request is in flight and after it fails).
  * @param {string} message
  * @param {'hint'|'error'} [messageType]
  */
@@ -1224,7 +1283,7 @@ function setMessage(message, messageType = 'hint') {
 }
 
 /**
- * 按 data-key 分发动作。这是事件委托的"分发中心"。
+ * Dispatch the action by data-key. This is the "dispatch center" of event delegation.
  * @param {string} key
  */
 function dispatch(key) {
@@ -1235,69 +1294,73 @@ function dispatch(key) {
   handleKey(key);
 }
 
-// ---------------------------------------------------------------- 事件委托
+// ---------------------------------------------------------------- Event delegation
 const keysEl = document.getElementById('keys');
 
 keysEl.addEventListener('click', (event) => {
-  // 从真实点击目标向上找最近的、带 data-key 的按钮。
-  // 这样即使点到按钮内部的文字节点，也能正确定位到按钮。
+  // Walk up from the real click target to the nearest button carrying data-key.
+  // That way a click on a text node inside the button still resolves to the button.
   const button = event.target instanceof Element ? event.target.closest('[data-key]') : null;
   if (!(button instanceof HTMLElement) || !keysEl.contains(button)) {
     return;
   }
   dispatch(button.dataset.key);
 
-  // 鼠标点击后浏览器会把焦点留在按钮上，之后按回车会重复触发该按钮。
-  // 这里主动把焦点移回键盘区容器，避免出现"按回车重复上次按键"的怪现象。
+  // After a mouse click the browser leaves focus on the button, so pressing Enter would
+  // retrigger it.
+  // Move focus back to the keypad container to avoid the odd "Enter repeats the last key" behavior.
   keysEl.focus({ preventScroll: true });
 });
 
-// 键盘区容器需要可获得焦点，上面的 focus() 才有意义
+// The keypad container must be focusable for the focus() call above to mean anything
 keysEl.tabIndex = -1;
 
 /**
- * 只读调试视图：把内部缓冲区的**原始文本**暴露给自动化测试。
+ * Read-only debug view: exposes the **raw text** of the internal buffer to the automated tests.
  *
- * 为什么需要它：界面把 * / - 显示成 × ÷ −（表里分离），
- * 所以测试如果只读界面文本，就分辨不出"内部到底存的是 ASCII 还是界面符号" ——
- * 而这决定了表达式能不能直接发给后端。测试里踩过这个坑。
+ * Why it is needed: the UI displays * / - as × ÷ − (a separation of model and view), so a test that
+ * only reads the UI text cannot tell whether the internals actually hold ASCII or the UI symbols —
+ * and that is what determines whether the expression can be sent to the back-end as is.
+ * The tests cover this.
  *
- * 这里只提供 getter，没有任何写入入口，
- * 因此不会变成"绕过输入校验直接改表达式"的后门。
+ * Only a getter is provided, with no write path, so it cannot become a backdoor that
+ * "bypasses input validation and edits the expression directly".
  */
 Object.defineProperty(window, '__debugExpression', {
   get: () => state.text,
   configurable: true,
 });
 
-// 首屏渲染
+// First render
 render(state, display);
 
   return { setSubmitHandler, setResult, setMessage, getExpression, handleKey };
   })(createState, applyKey, canSubmit, render, setArmedOperator, flashKey);
 
-  /* 把 buttons 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure buttons's exports into the bundling scope so later modules can reference them by name */
   const { setSubmitHandler, setResult, setMessage, getExpression, handleKey } = buttons;
 
-  /* ===== 源文件：src/js/app.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/app.js (generated, do not edit by hand) ===== */
   const app = (function (calculate, fetchHistory, deleteHistory, clearHistory, checkHealth, API_BASE_URL_FOR_TEST, render, setBackendStatus, setBackendDot, showServerError, setDeleteHandler, setStatus, renderList, clearList, setSubmitHandler, setResult, setMessage, getExpression, HISTORY_PAGE_SIZE) {
 /**
- * 主控模块（app）—— 把各个模块装配起来，并决定"什么时候做什么"。
+ * Main controller (app) — wires the modules together and decides "what happens when".
  *
- * 这是唯一知道"整个应用怎么运转"的文件。它负责：
+ * This is the only file that knows "how the whole application runs". It is responsible for:
  *
- *   1. 启动时检查后端是否在线（并把状态显示在显示屏右下角）
- *   2. 按 = 时：调用后端计算 → 显示结果 → 刷新历史
- *   3. 删除历史记录 → 刷新列表
- *   4. 搜索历史、清空历史
- *   5. 把"提交"的回调注入给 calc-buttons（避免循环依赖）
+ *   1. checking whether the back-end is online at startup (and showing the status in the bottom
+ *      right of the display)
+ *   2. on =: call the back-end to calculate → show the result → refresh the history
+ *   3. deleting a history record → refresh the list
+ *   4. searching and clearing the history
+ *   5. injecting the "submit" callback into calc-buttons (to avoid a circular dependency)
  *
- * 它不负责：
- *   · 表达式是否合法（input-model 管）
- *   · 怎么画界面（ui / history 管）
- *   · 怎么发请求（api 管）
+ * It is not responsible for:
+ *   · whether an expression is valid (input-model owns that)
+ *   · how the UI is drawn (ui / history own that)
+ *   · how requests are sent (api owns that)
  *
- * ★ 全文没有一处算术。结果始终来自后端的 result 字段。
+ * There is not a single arithmetic operation in this file. The result always comes from the
+ * back-end's result field.
  */
 
 
@@ -1305,73 +1368,79 @@ render(state, display);
 
 
 /**
- * ★ 为什么全部是"按名字 import"而不是 `import * as xxx`：
- *   打包器把每个模块包成 IIFE，依赖以函数参数形式传入
- *   （形如 `function (calculate, renderList, ...) {...}`）。
- *   所以模块内部只能用这些名字；写成 calculate(...) 会解析不到 api。
- *   这一点踩过一次：整包抛 ReferenceError，页面完全没反应。
+ * Why everything is imported "by name" instead of with `import * as xxx`:
+ *   the bundler wraps each module in an IIFE and passes dependencies as function parameters
+ *   (of the form `function (calculate, renderList, ...) {...}`).
+ *   A module can therefore only use those names; writing calculate(...) would fail to resolve
+ *   the name api.
+ *   Get this wrong and the whole bundle throws a ReferenceError and the page does nothing at all.
  */
 
-/** 是否已经警告过后端离线（避免每次按 = 都重复刷新同一句提示） */
+/**
+ * Whether the back-end offline warning has already been shown (avoids refreshing the same
+ * message on every =)
+ */
 let warnedOffline = false;
 
-/** 是否正在请求中（防止用户连点 = 发出多个请求） */
+/** Whether a request is in flight (stops repeated = presses from firing several requests) */
 let submitting = false;
 
-/** 当前的搜索关键字 */
+/** Current search keyword */
 let keyword = '';
 
-// ================================================================ 后端状态
+// ================================================================ Back-end status
 
 /**
- * 检查后端是否在线，并更新右下角的状态显示。
+ * Check whether the back-end is online and update the status shown in the bottom right corner.
  * @returns {Promise<boolean>}
  */
 async function refreshBackendStatus() {
   const online = await checkHealth();
 
   if (online) {
-    setBackendStatus('后端已连接 · 结果由后端计算');
+    setBackendStatus('Back end connected — result computed by the back end');
     setBackendDot('online');
   } else {
-    setBackendStatus('后端未连接 · 无法计算');
+    setBackendStatus('Back end not connected — cannot calculate');
     setBackendDot('offline');
   }
 
   return online;
 }
 
-// ================================================================ 计算流程
+// ================================================================ Calculation flow
 
 /**
- * 提交表达式给后端计算。
+ * Submit an expression to the back-end for evaluation.
  *
- * ★ 这是整个前端最关键的一段：它体现了作业要求的"结果由后端产生"。
- *   前端把表达式**原样**发出去（ASCII 形式），后端算完把 result 发回来，
- *   前端只负责显示。前端从头到尾不知道 12+8 等于几，除非后端告诉它。
+ * This is the most critical part of the whole front-end: it embodies the assignment's requirement
+ * that "the result is produced by the back-end".
+ *   The front-end sends the expression **as is** (ASCII form), the back-end computes it and sends
+ *   result back, and the front-end only displays it. The front-end never knows what 12+8 equals
+ *   unless the back-end tells it.
  *
  * @param {string} expression
  */
 async function submit(expression) {
   if (submitting) {
-    return; // 上一次还没回来，忽略这次点击
+    return; // The previous request has not come back yet; ignore this click
   }
 
   submitting = true;
-  setMessage('正在由后端计算 …', 'hint');
-  setResult('计算中 …', true);
+  setMessage('Calculating on the back end …', 'hint');
+  setResult('Calculating …', true);
 
   try {
     const data = await calculate(expression);
 
-    // 显示后端返回的结果。
-    // 注意 data.result 是**字符串**（后端用 Decimal 算，字符串能保住精度），
-    // 直接显示即可，前端不做任何数值转换。
+    // Show the result returned by the back-end.
+    // Note that data.result is a **string** (the back-end computes with Decimal, and a string keeps
+    // the precision), so it can be displayed directly — the front-end does no numeric conversion.
     setResult(data.result, false);
     setMessage(`${data.expression} = ${data.result}`, 'hint');
 
-    // 后端在计算的同时已经把这条记录写进了数据库，
-    // 所以这里只需要重新拉一次列表就能看到它。
+    // The back-end already wrote this record to the database while calculating,
+    // so re-fetching the list is all it takes to see it here.
     await loadHistory();
 
     warnedOffline = false;
@@ -1382,48 +1451,57 @@ async function submit(expression) {
   }
 }
 
-// ================================================================ 错误处理
+// ================================================================ Error handling
 
 /**
- * 把接口异常翻译成界面上的提示。
+ * Translate an API exception into a message on screen.
  *
- * 分工：
- *   · 后端返回的业务错误（INVALID_EXPRESSION / DIVISION_BY_ZERO 等）
- *     → 用 showServerError，它有一张错误码到中文的翻译表。
- *       用这张表而不是直接用后端传来的 message，是为了让文案集中可控，
- *       而且后端改文案时前端不会跟着变样。
- *   · 网络类错误（连不上、超时）
- *     → 这是"前端自己知道的问题"，直接提示，并刷新后端状态显示。
+ * Division of labour:
+ *   · business errors returned by the back-end (INVALID_EXPRESSION / DIVISION_BY_ZERO, etc.)
+ *     → use showServerError, which holds a table mapping error codes to user-facing text.
+ *       The table is used instead of the message the back-end sends directly so the wording stays
+ *       centralized and a back-end wording change does not alter the front-end UI.
+ *   · network errors (cannot connect, timeout)
+ *     → these are "problems the front-end knows about itself", so show them directly and refresh
+ *       the back-end status display.
  *
  * @param {unknown} error
  */
 function handleApiError(error) {
-  const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'UNKNOWN_ERROR';
-  const message = error instanceof Error ? error.message : '发生未知错误';
+  const code = error && typeof error === 'object' && 'code' in error
+    ? String(error.code)
+    : 'UNKNOWN_ERROR';
+  const message = error instanceof Error ? error.message : 'An unknown error occurred';
 
   if (code === 'NETWORK_ERROR' || code === 'TIMEOUT') {
     setResult('—', true);
     setMessage(message, 'error');
-    setBackendStatus('后端未连接 · 无法计算');
+    setBackendStatus('Back end not connected — cannot calculate');
     setBackendDot('offline');
 
     if (!warnedOffline) {
-      // 只在第一次离线时提醒去启动后端，避免反复刷同一句
-      setStatus('计算记录来自后端数据库。后端未连接时无法读取。', 'error');
+      // Only warn about starting the back-end the first time it is offline, so the same line is
+      // not repeated
+      setStatus(
+        'History records come from the back-end database. ' +
+          'They cannot be read while the back end is unreachable.',
+        'error',
+      );
       warnedOffline = true;
     }
     return;
   }
 
-  // 业务错误：后端说了算，前端只负责翻译成中文并标红
+  // Business error: the back-end has the final say; the front-end only maps it to text and marks
+  // it red
   showServerError(code);
-  setMessage(code === 'DIVISION_BY_ZERO' ? '除数不能为 0' : message, 'error');
+  setMessage(code === 'DIVISION_BY_ZERO' ? 'Division by zero is not allowed' : message, 'error');
 }
 
-// ================================================================ 历史记录
+// ================================================================ History
 
 /**
- * 拉取并渲染历史列表。
+ * Fetch and render the history list.
  */
 async function loadHistory() {
   try {
@@ -1433,22 +1511,24 @@ async function loadHistory() {
 
     if (data.items.length === 0) {
       setStatus(
-        keyword ? `没有找到包含「${keyword}」的记录` : '还没有计算记录。算一道题就会出现在这里。',
+        keyword
+          ? `No records matching "${keyword}"`
+          : 'No calculation records yet. Work out an expression and it will appear here.',
       );
     } else if (data.total > data.items.length) {
-      setStatus(`只显示最近 ${data.items.length} 条，共 ${data.total} 条。`);
+      setStatus(`Showing the latest ${data.items.length} of ${data.total}`);
     } else {
       setStatus('');
     }
   } catch (error) {
     clearList();
-    const message = error instanceof Error ? error.message : '读取历史失败';
-    setStatus('读取历史失败：' + message, 'error');
+    const message = error instanceof Error ? error.message : 'Could not load the history';
+    setStatus('Could not load the history: ' + message, 'error');
   }
 }
 
 /**
- * 删除一条历史记录。
+ * Delete one history record.
  * @param {number} id
  */
 async function removeRecord(id) {
@@ -1456,38 +1536,38 @@ async function removeRecord(id) {
     await deleteHistory(id);
     await loadHistory();
   } catch (error) {
-    const message = error instanceof Error ? error.message : '删除失败';
-    setStatus('删除失败：' + message, 'error');
-    // 失败时也要刷新，把按钮上那个 "…" 恢复成"删除"
+    const message = error instanceof Error ? error.message : 'Delete failed';
+    setStatus('Delete failed: ' + message, 'error');
+    // Refresh on failure too, to restore the delete label from the "…" on the button
     await loadHistory();
   }
 }
 
 /**
- * 清空全部历史。
+ * Clear the whole history.
  */
 async function clearAll() {
-  if (window.confirm('确定要清空全部历史记录吗？此操作不可撤销。') !== true) {
+  if (window.confirm('Clear all history? This cannot be undone.') !== true) {
     return;
   }
 
   try {
     const data = await clearHistory();
     await loadHistory();
-    setStatus(`已清空 ${data.deleted} 条记录。`);
+    setStatus(`Cleared ${data.deleted} records`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : '清空失败';
-    setStatus('清空失败：' + message, 'error');
+    const message = error instanceof Error ? error.message : 'Clear failed';
+    setStatus('Clear failed: ' + message, 'error');
   }
 }
 
-// ================================================================ 事件绑定
+// ================================================================ Event binding
 
 /**
- * 绑定历史区里的搜索框与清空按钮。
+ * Bind the search box and the clear button in the history panel.
  *
- * 搜索用防抖：每敲一个字都发请求会很浪费，而且返回顺序可能错乱。
- * 等用户停手 300 毫秒再发。
+ * The search is debounced: sending a request on every keystroke is wasteful and responses could
+ * come back out of order. Wait 300 milliseconds after the user stops typing.
  */
 function bindHistoryControls() {
   const input = document.getElementById('history-keyword');
@@ -1509,39 +1589,43 @@ function bindHistoryControls() {
   }
 }
 
-// ================================================================ 兼容接口（自动化测试用）
+// ================================================================ Compatibility interface (for
+// automated tests)
 
 /**
- * 只读调试接口 —— 供自动化测试观察内部状态。
+ * Read-only debug interface — lets the automated tests observe internal state.
  *
- * 为什么需要：测试要能判断"结果行显示的是后端返回的值还是前端自己算的"。
- * 这里只提供读取，没有写入入口，因此不构成绕过校验的后门。
+ * Why it is needed: the tests must be able to tell whether the result line shows a value
+ * returned by the back-end or one the front-end computed itself. Only reads are exposed, with
+ * no write path, so it is not a backdoor around validation.
  */
 function exposeDebugApi() {
   Object.defineProperty(window, '__app', {
     configurable: true,
     value: {
       getExpression,
-      /** 重新检查后端状态（测试里用来等待后端就绪） */
+      /** Re-check the back-end status (used in tests to wait until the back-end is ready) */
       refreshBackendStatus,
-      /** 手动触发一次历史刷新 */
+      /** Manually trigger one history refresh */
       reloadHistory: loadHistory,
-      /** 后端地址，便于测试断言配置是否被正确读取 */
+      /** Back-end URL, so tests can assert that the config is read correctly */
       apiBaseUrl: API_BASE_URL_FOR_TEST,
     },
   });
 }
 
-// ================================================================ 启动
+// ================================================================ Startup
 
 /**
- * 启动应用。
+ * Start the application.
  *
- * 顺序有讲究：
- *   1. 先注入提交回调 —— 否则用户在状态检查完成前按 = 会没有任何反应
- *   2. 绑定历史区的控件
- *   3. 再去做网络请求（检查后端、拉历史）
- *      这两件事是并行的，不互相等待 —— 后端慢的时候界面依然可用。
+ * The order matters:
+ *   1. inject the submit callback first — otherwise pressing = before the status check finishes
+ *      does nothing
+ *   2. bind the controls in the history panel
+ *   3. then make the network requests (check the back-end, fetch the history);
+ *      those two run in parallel and do not wait for each other — the UI stays usable when the
+ *      back-end is slow.
  */
 function boot() {
   setSubmitHandler(submit);
@@ -1549,7 +1633,8 @@ function boot() {
   bindHistoryControls();
   exposeDebugApi();
 
-  // 两个网络请求并行发出，不 await 其中任何一个再发另一个，省一个来回的时间
+  // Both network requests are fired in parallel rather than awaiting one before the other,
+  // saving a round trip
   refreshBackendStatus();
   loadHistory();
 }
@@ -1557,27 +1642,29 @@ function boot() {
   return { boot };
   })(calculate, fetchHistory, deleteHistory, clearHistory, checkHealth, API_BASE_URL_FOR_TEST, render, setBackendStatus, setBackendDot, showServerError, setDeleteHandler, setStatus, renderList, clearList, setSubmitHandler, setResult, setMessage, getExpression, HISTORY_PAGE_SIZE);
 
-  /* 把 app 的导出摊到打包作用域，供后续模块按名字引用 */
+  /* destructure app's exports into the bundling scope so later modules can reference them by name */
   const { boot } = app;
 
-  /* ===== 源文件：src/js/keyboard.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/keyboard.js (generated, do not edit by hand) ===== */
   (function (handleKey) {
 /**
- * 物理键盘输入 —— 把键盘事件翻译成"按键语义"，再交给同一个处理入口。
+ * Physical keyboard input — translates keyboard events into "key semantics" and hands them to
+ * the same entry point.
  *
- * 关键设计：本模块**没有任何自己的输入规则**。
- *   它只做两件事：① 把 KeyboardEvent 映射成 data-key 语义；
- *                 ② 阻止浏览器默认行为（比如按 / 触发快速查找）。
- *   真正的合法性判断全部发生在 input-model.js 里。
+ * Key design: this module has **no input rules of its own**.
+ *   It does only two things: 1. map a KeyboardEvent to a data-key semantic;
+ *                 2. prevent the browser's default behavior (e.g. / opening quick find).
+ *   All actual validity checks happen in input-model.js.
  *
- * 这样做的好处：鼠标能输入的，键盘一定能输入；反过来也一样。
- *   规则只有一份，不会出现"点击禁止、键盘却能输入"的不一致。
+ * The benefit: anything the mouse can input, the keyboard can input, and vice versa.
+ *   There is only one set of rules, so "clicks are forbidden but the keyboard still gets
+ *   through" cannot happen.
  */
 
 /**
- * 物理按键 → 按键语义 的映射表。
- * 直接写字符的键（数字、运算符、括号、小数点）用 KEY_MAP；
- * 名字特殊的控制键用 SPECIAL_MAP。
+ * Mapping from physical keys to key semantics.
+ * Keys that type a character directly (digits, operators, parentheses, decimal point) use KEY_MAP;
+ * control keys with special names use SPECIAL_MAP.
  * @type {Record<string, string>}
  */
 const KEY_MAP = {
@@ -1586,7 +1673,8 @@ const KEY_MAP = {
   '.': '.',
   '+': '+', '-': '-', '*': '*', '/': '/',
   '(': '(', ')': ')',
-  // 中文输入法下常见的全角符号，一并接受，避免"看着一样却按不出来"
+  // Full-width symbols common under Chinese IMEs are accepted too, so a key that looks right
+  // actually works
   '×': '*', '÷': '/', '（': '(', '）': ')', '。': '.',
 };
 
@@ -1603,13 +1691,16 @@ const SPECIAL_MAP = {
   N: 'NEG',
 };
 
-/** 需要阻止默认行为的按键（否则会触发浏览器自身的快捷键） */
+/**
+ * Keys whose default behavior must be prevented (otherwise they trigger the browser's own
+ * shortcuts)
+ */
 const PREVENT_DEFAULT = new Set(['/', "'", '`', 'Backspace', 'Enter']);
 
 /**
- * 判断当前焦点是否在可编辑元素里 —— 如果在，键盘事件应该留给那个元素。
- * 本页面目前没有输入框，但保留这个判断，
- * 以后加了"历史搜索框"就不会出现"打字变成按计算器"的问题。
+ * Decide whether focus currently sits in an editable element — if so, keyboard events belong to it.
+ * This page has no text input yet, but the check is kept so that adding a "history search box"
+ * later will not turn typing into calculator keypresses.
  * @returns {boolean}
  */
 function isEditingText() {
@@ -1622,7 +1713,7 @@ function isEditingText() {
 }
 
 /**
- * 键盘事件处理：翻译 → 分发 → 阻止默认行为。
+ * Keyboard event handling: translate → dispatch → prevent default.
  * @param {KeyboardEvent} event
  */
 function onKeyDown(event) {
@@ -1639,7 +1730,8 @@ function onKeyDown(event) {
     event.preventDefault();
   }
 
-  // flash=true：物理键盘没有 :active 伪类，由脚本补上"按下了"的视觉反馈
+  // flash=true: the physical keyboard has no :active pseudo-class, so the script supplies the
+  // "pressed" feedback
   handleKey(key, { flash: true });
 }
 
@@ -1647,55 +1739,57 @@ window.addEventListener('keydown', onKeyDown);
 
   })(handleKey);
 
-  /* ===== 源文件：src/js/boot.js（生成物，请勿手工编辑） ===== */
+  /* ===== source file: src/js/boot.js (generated, do not edit by hand) ===== */
   (function (boot) {
 /**
- * 启动脚本 —— 整个应用的最后一块拼图。
+ * Boot script — the last piece of the puzzle.
  *
- * 为什么启动逻辑要单独一个文件，而不是写在 app.js 的末尾：
- *   因为 bundle.js 是把所有模块**按顺序拼在一个作用域里**的。
- *   如果 app.js 在文件末尾直接调用 boot()，那么拼包时它会在
- *   "键盘模块还没定义"的时候就执行 —— 页面直接报错。
- *   （这个坑在打包器上真实踩过：bundle 的依赖顺序很敏感。）
+ * Why the startup logic gets its own file instead of sitting at the end of app.js:
+ *   because bundle.js concatenates all modules **into one scope, in order**.
+ *   If app.js called boot() directly at the end of the file, the bundle would run it while
+ *   "the keyboard module is not defined yet" — and the page would throw immediately.
+ *   (The bundler is very sensitive to the dependency order inside the bundle.)
  *
- *   单独一个 boot.js 放在**最后一个**文件，并且用 DOMContentLoaded 兜底，
- *   就保证了"所有模块都已定义"之后才启动。
+ *   A separate boot.js placed as the **last** file, with DOMContentLoaded as a fallback,
+ *   guarantees that startup only happens after "all modules are defined".
  *
- * 顺序说明：
- *   · 先给 window.__calc 挂上只读调试接口（自动化测试要用）
- *   · 再调 app.boot() 真正启动
+ * Order:
+ *   · first attach the read-only debug interface to window.__calc (the automated tests need it)
+ *   · then call app.boot() to actually start
  */
 
 /**
- * 真正的启动动作。
+ * The actual startup action.
  */
 function start() {
   try {
     boot();
   } catch (error) {
-    // 启动失败必须留下痕迹 —— 否则页面看起来正常但点了没反应，
-    // 和当年 file:// 那个坑的表现一模一样，极难排查。
-    console.error('[计算器] 启动失败：', error);
+    // A startup failure must leave a trace — otherwise the page looks fine but clicks do nothing,
+    // exactly like the old file:// trap, and it is extremely hard to diagnose.
+    console.error('[calculator] Startup failed:', error);
     const messageEl = document.getElementById('message');
     if (messageEl) {
-      messageEl.textContent = '页面启动失败，请按 F12 查看控制台错误';
+      messageEl.textContent = 'The page failed to start. Press F12 to check the console.';
       messageEl.classList.add('is-error');
     }
   }
 }
 
 if (document.readyState === 'loading') {
-  // 文档还在加载：等 DOM 就绪再启动（脚本放在 body 末尾时通常不会走这里）
+  // The document is still loading: wait for the DOM (rarely taken when the script sits at the
+  // end of body)
   document.addEventListener('DOMContentLoaded', start, { once: true });
 } else {
-  // 文档已就绪：直接启动
+  // The document is ready: start right away
   start();
 }
 
   })(boot);
 
 
-  /* 自动化测试与截图工具用的只读接口（见 tools/e2e-click.mjs、tools/verify-deployed.mjs） */
+  /* read-only interface for the automated tests and the screenshot tool
+     (see tools/e2e-click.mjs, tools/verify-deployed.mjs) */
   window.__calc = {
     createState: model.createState,
     applyKey: model.applyKey,
@@ -1703,11 +1797,11 @@ if (document.readyState === 'loading') {
     setArmedOperator: ui.setArmedOperator,
     flashKey: ui.flashKey,
     showServerError: ui.showServerError,
-    /* 交互代码是否已启动 —— e2e 测试的第一条断言就是它 */
+    /* whether the interactive code has started — this is the first e2e assertion */
     isBooted: () => document.getElementById('keys') !== null && document.getElementById('keys').tabIndex === -1,
-    /* 当前表达式（ASCII 原文，供测试判断表里分离是否正确） */
+    /* current expression (ASCII source, so tests can check display/data separation) */
     getExpression: buttons.getExpression,
-    /* 后端地址（供测试断言配置被正确读取） */
+    /* back-end address (so tests can assert the config was read correctly) */
     getApiBaseUrl: () => api.API_BASE_URL_FOR_TEST,
   };
 
