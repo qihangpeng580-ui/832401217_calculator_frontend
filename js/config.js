@@ -1,44 +1,46 @@
 /**
- * 配置层 —— 前端需要知道的"外部世界"信息都放在这里。
+ * Config layer — every piece of "outside world" information the front-end needs lives here.
  *
- * 为什么单独一个文件：
- *   后端地址在开发、部署、演示三种场景下是不同的。
- *   如果把它散落在代码各处，上线时要翻遍所有文件找。
- *   集中一处，改一行就够。
+ * Why a separate file:
+ *   the back-end address differs between development, deployment and demonstration.
+ *   Scattered across the code, it would mean searching every file before a release.
+ *   Kept in one place, one line is enough.
  *
- * ⚠️ 部署前必须改这里 ↑
+ * Change this before deploying ↑
  */
 
 /**
- * 后端服务的地址（末尾不要带斜杠）。
+ * Back-end service address (no trailing slash).
  *
- * 取值说明：
- *   · 本地开发： 'http://127.0.0.1:8000'   ← 前端和后端都在本机
- *   · 部署之后： 改成后端的公网地址，例如 'https://xxx.example.com'
+ * Values:
+ *   · Local development: 'http://127.0.0.1:8000'   ← front-end and back-end both on this machine
+ *   · After deployment:  the back-end's public address, e.g. 'https://xxx.example.com'
  *
- * 特殊情况：
- *   前端和后端**同源**部署时（同一个域名端口）可以留空字符串 ''，
- *   这样请求会打到 /api/... 而不是跨域 —— 也就不存在 CORS 问题。
+ * Special case:
+ *   when front-end and back-end are deployed **same-origin** (same domain and port) this can be
+ *   the empty string '', so requests go to /api/... instead of cross-origin — and CORS is a
+ *   non-issue.
  */
 export const API_BASE_URL = 'http://127.0.0.1:8000';
 
 /**
- * 单个请求的超时时间（毫秒）。
+ * Timeout for a single request (milliseconds).
  *
- * 为什么必须设超时：
- *   后端挂掉时，浏览器的 fetch 默认会一直挂着不返回，
- *   用户按了 = 之后界面永远停在"计算中"，看起来像死机。
- *   设了超时才能给出"连不上后端"的明确提示。
+ * Why a timeout is required:
+ *   when the back-end is down, the browser's fetch hangs and never returns by default,
+ *   so after the user presses = the UI stays on "calculating" forever and looks frozen.
+ *   Only with a timeout can we show a clear "cannot reach the back-end" message.
  */
 export const REQUEST_TIMEOUT_MS = 8000;
 
 /**
- * 历史记录一次拉多少条。
+ * How many history records to fetch at a time.
  */
 export const HISTORY_PAGE_SIZE = 20;
 
 /**
- * 历史记录里每条显示的表达式最大长度（超出截断加省略号）。
- * 防止一条超长表达式把列表撑破。
+ * Maximum length of each expression shown in the history list (longer ones are truncated with
+ * an ellipsis).
+ * Keeps a single very long expression from breaking the list layout.
  */
 export const HISTORY_EXPRESSION_MAX_LENGTH = 28;
