@@ -1,36 +1,40 @@
 /**
- * 表达式缓冲区 —— 计算器的"输入模型"。
+ * Expression buffer — the calculator's input model.
  *
- * 职责边界（很重要）：
- *   本模块只做**字符串层面的输入校验与拼装**，不解析、不求值、不产生任何计算结果。
- *   因为作业明确要求"最终计算结果必须由后端产生"，
- *   所以这里连一个 `+` 号运算都不允许出现，更不允许出现 eval/Function。
+ * Responsibility boundary (important):
+ *   This module only does **string-level input validation and assembly**;
+ *   it does not parse, evaluate, or produce any calculation result.
+ *   The assignment explicitly requires the final result to come from the back-end,
+ *   so not even a single `+` operation is allowed here, let alone eval/Function.
  *
- * 光标模型：表达式是一段文本 + 一个插入位置 cursor（0..text.length）。
- *   为简化实现，本版本所有输入都追加在末尾、退格从末尾删除，
- *   因此 cursor 恒等于 text.length —— 保留该字段是为了让后续做"中间插字"时不必重写调用方。
+ * Cursor model: an expression is a piece of text plus an insertion position cursor
+ * (0..text.length).
+ *   To keep the implementation simple, this version always appends input at the end and
+ *   deletes from the end on backspace, so cursor always equals text.length — the field is kept
+ *   so that adding "insert in the middle" later will not require rewriting callers.
  *
  * @typedef {object} BufferState
- * @property {string} text           表达式文本，内部用 * / 与 -，界面再映射成 × ÷ −
- * @property {number} cursor         插入位置
- * @property {string} message        给用户看的提示（正常时为空串）
+ * @property {string} text           Expression text; uses * / and - internally, mapped to × ÷ −
+ *                                   in the UI
+ * @property {number} cursor         Insertion position
+ * @property {string} message        Message shown to the user (empty string when normal)
  * @property {string} messageType    'hint' | 'error'
  */
 
-/** 允许出现在表达式内部的字符白名单 */
+/** Whitelist of characters allowed inside an expression */
 export const ALLOWED_CHARS = '0123456789.+-*/()';
 
-/** 四则运算符 */
+/** Arithmetic operators */
 export const OPERATORS = '+-*/';
 
-/** 表达式长度上限，防止无意义超长输入 */
+/** Maximum expression length, to prevent meaningless oversized input */
 export const MAX_LENGTH = 60;
 
-/** 四种运算符，用于运算符键的"换键"行为 */
+/** The four operators, used for the "swap key" behavior of operator keys */
 const OPERATOR_SET = ['+', '-', '*', '/'];
 
 /**
- * 新建一个空缓冲区状态。
+ * Create a new empty buffer state.
  * @returns {BufferState}
  */
 export function createState() {
@@ -38,7 +42,7 @@ export function createState() {
 }
 
 /**
- * 生成一个带提示的状态副本（纯函数，不改原对象）。
+ * Return a copy of the state carrying a message (pure function, does not mutate the original).
  * @param {BufferState} state
  * @param {string} message
  * @param {string} [messageType]
@@ -49,8 +53,8 @@ function withMessage(state, message, messageType = 'hint') {
 }
 
 /**
- * 生成一个"输入被拒绝"的状态：文本不变，只给提示。
- * 所有校验失败都走这里，保证"拒绝输入"的行为只有一种实现。
+ * Build an "input rejected" state: the text is unchanged, only a message is attached.
+ * Every validation failure goes through here, so "reject input" has exactly one implementation.
  * @param {BufferState} state
  * @param {string} message
  * @returns {BufferState}
@@ -75,7 +79,7 @@ function lastChar(state) {
 }
 
 /**
- * 取末尾这一段连续数字/小数点，例如 '12+3.5' → '3.5'（没有则返回空串）。
+ * Take the trailing run of digits/decimal point, e.g. '12+3.5' → '3.5' (empty string if none).
  * @param {string} text
  * @returns {string}
  */
@@ -85,7 +89,7 @@ export function trailingNumber(text) {
 }
 
 /**
- * 判断一个片段是不是合法数字：至少一位数字，且最多一个小数点。
+ * Check whether a segment is a valid number: at least one digit and at most one decimal point.
  * @param {string} segment
  * @returns {boolean}
  */
@@ -94,7 +98,7 @@ export function isNumberSegment(segment) {
 }
 
 /**
- * 统计括号是否配对（左括号数 >= 右括号数即"目前还算合法"）。
+ * Check whether parentheses are balanced (left count >= right count means "still valid so far").
  * @param {string} text
  * @returns {{depth: number, balanced: boolean}}
  */
@@ -116,76 +120,79 @@ export function parenInfo(text) {
 }
 
 /**
- * 供"="使用：判断当前表达式是否"可以提交给后端"。
- * 只做前端能负责任地判断的部分：非空、括号配对、不以运算符或小数点结尾。
+ * Used by "=": decide whether the current expression "can be submitted to the back-end".
+ * Only covers what the front-end can judge responsibly: non-empty, balanced parentheses,
+ * and not ending with an operator or a decimal point.
  * @param {string} text
  * @returns {{ok: true} | {ok: false, message: string}}
  */
 export function canSubmit(text) {
   if (text === '') {
-    return { ok: false, message: '请输入表达式' };
+    return { ok: false, message: 'Enter an expression' };
   }
   const { depth } = parenInfo(text);
   if (depth !== 0) {
-    return { ok: false, message: '括号不匹配：还有 ' + depth + ' 个左括号没有闭合' };
+    return { ok: false, message: 'Unbalanced parentheses: ' + depth + ' left unclosed' };
   }
   const last = text.slice(-1);
   if (isOperator(last)) {
-    return { ok: false, message: '表达式不完整：结尾是运算符' };
+    return { ok: false, message: 'Incomplete expression: it ends with an operator' };
   }
   if (last === '.') {
-    return { ok: false, message: '表达式不完整：小数点后缺少数字' };
+    return { ok: false, message: 'Incomplete expression: no digits after the decimal point' };
   }
   if (last === '(') {
-    return { ok: false, message: '表达式不完整：左括号后缺少内容' };
+    return { ok: false, message: 'Incomplete expression: nothing after the left parenthesis' };
   }
   return { ok: true };
 }
 
 /**
- * 数字键：追加一位数字。
+ * Digit key: append one digit.
  * @param {BufferState} state
  * @param {string} digit
  * @returns {BufferState}
  */
 function inputDigit(state, digit) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
-  // 一位数字不能以 0 开头（'0' 本身除外），例如 0 后面直接按 5 得到 "05" 属于书写错误
+  // A number must not start with 0 (except '0' itself); e.g. pressing 5 right after 0 gives
+  // "05", which is a typo
   if (lastChar(state) === '0' && trailingNumber(state.text) === '0' && digit !== '.') {
-    return reject(state, '数字不能以 0 开头');
+    return reject(state, 'A number cannot start with 0');
   }
   return withMessage(
     { ...state, text: state.text + digit, cursor: state.text.length + 1 },
-    '按 = 让后端计算',
+    'Press = to calculate on the back end',
   );
 }
 
 /**
- * 小数点：同一个数字里最多一个。
+ * Decimal point: at most one per number.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputDot(state) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   if (trailingNumber(state.text).includes('.')) {
-    return reject(state, '同一个数字里只能有一个小数点');
+    return reject(state, 'A number can have only one decimal point');
   }
   if (lastChar(state) === ')') {
-    return reject(state, '右括号后不能直接跟小数点');
+    return reject(state, 'A decimal point cannot follow a right parenthesis');
   }
   const prefix = trailingNumber(state.text) === '' ? '0' : '';
   return withMessage(
     { ...state, text: state.text + prefix + '.', cursor: state.text.length + prefix.length + 1 },
-    '正在输入小数',
+    'Typing a decimal number',
   );
 }
 
 /**
- * 四则运算符：连续运算符只允许一个负号（用于表示负数）。
+ * Arithmetic operator: a run of consecutive operators may contain only one minus sign
+ * (to express a negative number).
  * @param {BufferState} state
  * @param {string} operator
  * @returns {BufferState}
@@ -195,147 +202,159 @@ function inputOperator(state, operator) {
 
   if (state.text === '') {
     if (operator === '-') {
-      return withMessage({ ...state, text: '-', cursor: 1 }, '正在输入负数');
+      return withMessage({ ...state, text: '-', cursor: 1 }, 'Typing a negative number');
     }
-    return reject(state, '表达式不能以 ' + operator + ' 开头');
+    return reject(state, 'An expression cannot start with ' + operator);
   }
 
-  // 连续运算符：把刚输入的运算符"换掉"，而不是追加。
-  // 这是真实计算器的常见行为，也顺手解决了"连续运算符"的合法性问题。
+  // Consecutive operators: replace the operator just entered instead of appending another one.
+  // This is typical behavior in real calculators, and it also settles the "consecutive
+  // operators" legality problem.
   if (isOperator(last)) {
     if (operator === '-' && last !== '-') {
       return withMessage(
         { ...state, text: state.text + '-' },
-        '这里的负号表示负数，如 3*-2',
+        'The minus here means a negative number, as in 3*-2',
       );
     }
     const swapped = state.text.slice(0, -1) + operator;
-    return withMessage({ ...state, text: swapped }, '已改为 ' + operator);
+    return withMessage({ ...state, text: swapped }, 'Changed to ' + operator);
   }
 
   if (last === '(') {
     if (operator === '-') {
-      return withMessage({ ...state, text: state.text + '-' }, '括号里的负数');
+      return withMessage(
+        { ...state, text: state.text + '-' },
+        'Negative number inside the parentheses',
+      );
     }
-    return reject(state, '左括号后不能直接跟运算符');
+    return reject(state, 'An operator cannot follow a left parenthesis');
   }
 
   if (last === '.') {
-    return reject(state, '小数点后需要先输入数字');
+    return reject(state, 'Enter a digit after the decimal point');
   }
 
   return withMessage(
     { ...state, text: state.text + operator, cursor: state.text.length + 1 },
-    '继续输入数字或用括号',
+    'Keep typing digits or use parentheses',
   );
 }
 
 /**
- * 左括号：数字或右括号后面补左括号时自动补一个乘号（隐式乘法）。
+ * Left parenthesis: when it follows a digit or a right parenthesis, an implicit multiplication
+ * sign is inserted.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputLeftParen(state) {
   if (state.text.length >= MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   const last = lastChar(state);
   const needsMultiply = isDigit(last) || last === ')' || last === '.';
   const addition = needsMultiply ? '*(' : '(';
   return withMessage(
     { ...state, text: state.text + addition, cursor: state.text.length + addition.length },
-    needsMultiply ? '已在数字与括号之间补上乘号' : '括号里可以写子表达式',
+    needsMultiply
+      ? 'Inserted a multiplication sign between the number and the parenthesis'
+      : 'A sub-expression can go inside the parentheses',
   );
 }
 
 /**
- * 右括号：必须先有未闭合的左括号，且不能紧跟运算符或左括号。
+ * Right parenthesis: an unclosed left parenthesis must exist, and it must not directly follow
+ * an operator or a left parenthesis.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function inputRightParen(state) {
   const { depth } = parenInfo(state.text);
   if (depth === 0) {
-    return reject(state, '没有可以配对的左括号');
+    return reject(state, 'No matching left parenthesis');
   }
   const last = lastChar(state);
   if (isOperator(last) || last === '(') {
-    return reject(state, '右括号前缺少数字');
+    return reject(state, 'Missing a number before the right parenthesis');
   }
   return withMessage(
     { ...state, text: state.text + ')', cursor: state.text.length + 1 },
-    depth === 1 ? '括号已闭合' : '还剩 ' + (depth - 1) + ' 个左括号',
+    depth === 1 ? 'Parenthesis closed' : 'Left parentheses still open: ' + (depth - 1),
   );
 }
 
 /**
- * 取负时统一写成 (-数字) 这种带括号的形式，而不是直接插一个 '-'。
- * 原因：'5+-3' 这种写法虽然多数解析器能接受，但语义上依赖解析器的宽容度；
- *      写成 '5+(-3)' 则对任何后端解析器都是无歧义的。
+ * Negation is always written in the parenthesized form (-number) rather than inserting a bare '-'.
+ * Reason: although '5+-3' is accepted by most parsers, its meaning depends on parser leniency;
+ *      '5+(-3)' is unambiguous for any back-end parser.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function toggleSign(state) {
   const text = state.text;
 
-  // 情况一：末尾是 (-数字) —— 反操作，整体去掉括号与负号
+  // Case 1: the tail is (-number) — the inverse operation, dropping both the parentheses and
+  // the minus sign
   const wrapped = text.match(/\(-(\d+(?:\.\d+)?)\)$/);
   if (wrapped) {
     const next = text.slice(0, wrapped.index) + wrapped[1];
     return withMessage(
       { ...state, text: next, cursor: next.length },
-      '已去掉负号',
+      'Minus sign removed',
     );
   }
 
-  // 情况二：末尾是普通数字 —— 加上括号与负号
+  // Case 2: the tail is a plain number — wrap it in parentheses and add a minus sign
   const tail = trailingNumber(text);
   if (tail === '' || !isNumberSegment(tail)) {
-    return reject(state, '请先输入一个完整的数字再按 ± ');
+    return reject(state, 'Enter a complete number before pressing ±');
   }
 
   const before = text.slice(0, text.length - tail.length);
   const next = before + '(-' + tail + ')';
   if (next.length > MAX_LENGTH) {
-    return reject(state, '表达式最多 ' + MAX_LENGTH + ' 个字符');
+    return reject(state, 'Expression is limited to ' + MAX_LENGTH + ' characters');
   }
   return withMessage(
     { ...state, text: next, cursor: next.length },
-    '已取负（用括号包住，避免歧义）',
+    'Negated (wrapped in parentheses to avoid ambiguity)',
   );
 }
 
 /**
- * 退格：删除末尾一个字符。
+ * Backspace: delete one character from the end.
  * @param {BufferState} state
  * @returns {BufferState}
  */
 function backspace(state) {
   if (state.text === '') {
-    return withMessage(state, '已经是空的');
+    return withMessage(state, 'Already empty');
   }
-  // 形如 ...(-5) 时，一次退格删掉整个括号组更符合直觉
+  // For a tail like ...(-5), deleting the whole parenthesized group in one backspace is more
+  // intuitive
   const trimmed = state.text.replace(/\(-\d+(\.\d+)?\)$/, (match) => match.slice(2, -1));
   const next = trimmed === state.text ? state.text.slice(0, -1) : trimmed;
   return withMessage({ ...state, text: next, cursor: next.length }, '');
 }
 
 /**
- * 清空。
+ * Clear.
  * @returns {BufferState}
  */
 function clear() {
-  return withMessage(createState(), '已清空');
+  return withMessage(createState(), 'Cleared');
 }
 
 /**
- * 单一入口：把一个"按键语义"应用到缓冲区状态上（纯函数，不改原对象）。
+ * Single entry point: apply one "key semantic" to the buffer state (pure function, does not
+ * mutate the original).
  *
- * 之所以所有输入都走这一个函数，是因为鼠标点击和物理键盘必须走同一套规则；
- * 只要它们都调用 applyKey，就不可能出现在一边合法、在另一边非法的情况。
+ * Every kind of input goes through this one function because mouse clicks and the physical keyboard
+ * must follow the same rule set; as long as both call applyKey, a key can never be legal on
+ * one path and illegal on the other.
  *
  * @param {BufferState} state
- * @param {string} key  数字、'.'、'+ - * /'、'(' ')'、'AC'、'BACK'、'NEG'
+ * @param {string} key  digit, '.', '+ - * /', '(' ')', 'AC', 'BACK', 'NEG'
  * @returns {BufferState}
  */
 export function applyKey(state, key) {
@@ -367,5 +386,5 @@ export function applyKey(state, key) {
   if (key.length === 1 && OPERATOR_SET.includes(key)) {
     return inputOperator(state, key);
   }
-  return reject(state, '不支持的按键：' + key);
+  return reject(state, 'Unsupported key: ' + key);
 }
