@@ -1,30 +1,34 @@
 /**
- * API 客户端 —— 前端唯一与后端通信的地方。
+ * API client — the only place in the front-end that talks to the back-end.
  *
- * 设计原则：
- *   1. **前端不做计算**。这个文件的每个函数都只是"发出去、收回来、翻译一下"，
- *      一行算术都没有。结果和错误都由后端决定。
- *   2. **所有网络细节关在这个文件里**。其余模块不知道有 fetch、不知道有 HTTP 状态码，
- *      只看到"成功拿到数据"或"抛出一个带错误码的异常"。
- *      以后要换成 XMLHttpRequest 或 WebSocket，只有这里要改。
- *   3. **错误一律归一化成 ApiError**。调用方只需判断 error.code，
- *      不用管是网络错了、超时了、还是后端返回了业务错误。
+ * Design principles:
+ *   1. **The front-end never computes**. Every function in this file just sends, receives and
+ *      translates; there is not a single arithmetic operation here. Results and errors are
+ *      decided by the back-end.
+ *   2. **All network details stay inside this file**. Other modules do not know that fetch or
+ *      HTTP status codes exist; they only see "data received successfully" or "an exception
+ *      with an error code was thrown". Switching to XMLHttpRequest or WebSocket later would
+ *      only require changes here.
+ *   3. **All errors are normalized into ApiError**. Callers only need to inspect error.code and
+ *      do not care whether the network failed, the request timed out, or the back-end returned
+ *      a business error.
  */
 
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config.js';
 
 /**
- * 统一的接口异常。
+ * Unified API exception.
  *
- * code 取值：
- *   · 后端返回的业务错误码，如 'INVALID_EXPRESSION'、'DIVISION_BY_ZERO'
- *   · 前端自己产生的 'NETWORK_ERROR'（连不上）、'TIMEOUT'（超时）、'BAD_RESPONSE'（响应格式不对）
+ * code values:
+ *   · business error code returned by the back-end, e.g. 'INVALID_EXPRESSION', 'DIVISION_BY_ZERO'
+ *   · front-end generated 'NETWORK_ERROR' (cannot connect), 'TIMEOUT' (timed out),
+ *     'BAD_RESPONSE' (malformed response)
  */
 export class ApiError extends Error {
   /**
-   * @param {string} code 错误码
-   * @param {string} message 给用户看的中文说明
-   * @param {number} [status] HTTP 状态码（如果是业务错误）
+   * @param {string} code error code
+   * @param {string} message user-facing description
+   * @param {number} [status] HTTP status code (for business errors)
    */
   constructor(code, message, status) {
     super(message);
@@ -35,20 +39,20 @@ export class ApiError extends Error {
 }
 
 /**
- * 发一个请求，返回响应体里的 data 部分。
+ * Send one request and return the data part of the response body.
  *
- * @param {string} path 接口路径，如 '/api/calculate'
+ * @param {string} path API path, e.g. '/api/calculate'
  * @param {{method?: string, body?: object}} [options]
- * @returns {Promise<any>} 后端返回的 data
- * @throws {ApiError} 任何失败情况
+ * @returns {Promise<any>} data returned by the back-end
+ * @throws {ApiError} any failure
  */
 async function request(path, options = {}) {
   const method = options.method || 'GET';
   const url = API_BASE_URL + path;
 
-  // 用 AbortController 实现超时。
-  // 为什么不用 fetch 自带的 signal 超时参数：那个还不支持得很广泛，
-  // AbortController 是标准做法，兼容性更好。
+  // Timeout implemented with AbortController.
+  // Why not fetch's built-in signal timeout option: it is not widely supported yet,
+  // while AbortController is the standard approach with better compatibility.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -67,29 +71,37 @@ async function request(path, options = {}) {
   try {
     response = await fetch(url, init);
   } catch (error) {
-    // fetch 只在网络层失败时抛异常（连不上、超时、被 CORS 拦、域名解析不了）
+    // fetch only throws when the network layer fails (cannot connect, timeout, blocked by CORS,
+    // DNS failure)
     if (error && error.name === 'AbortError') {
-      throw new ApiError('TIMEOUT', `请求超过 ${REQUEST_TIMEOUT_MS / 1000} 秒没有响应，请检查后端服务`);
+      throw new ApiError(
+        'TIMEOUT',
+        `Request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds. ` +
+          'Check the back-end service.',
+      );
     }
-    throw new ApiError('NETWORK_ERROR', '无法连接后端服务，请确认后端已启动');
+    throw new ApiError(
+      'NETWORK_ERROR',
+      'Cannot reach the back-end service. Make sure it is running.',
+    );
   } finally {
     clearTimeout(timer);
   }
 
-  // 204 No Content（删除成功）没有响应体，直接返回
+  // 204 No Content (successful deletion) has no response body, so return right away
   if (response.status === 204) {
     return null;
   }
 
-  // 解析响应体。即使状态码是错误，后端也会返回 JSON 说明原因，
-  // 所以要先把 body 读出来，再决定怎么处理。
+  // Parse the response body. Even for an error status the back-end returns JSON explaining
+  // the reason, so read the body first and decide how to handle it afterwards.
   let payload;
   try {
     payload = await response.json();
   } catch {
     throw new ApiError(
       'BAD_RESPONSE',
-      `后端返回的内容不是合法 JSON（HTTP ${response.status}）`,
+      `The back-end response is not valid JSON (HTTP ${response.status})`,
       response.status,
     );
   }
@@ -98,19 +110,20 @@ async function request(path, options = {}) {
     return payload.data;
   }
 
-  // 走到这里说明是错误。优先用后端给的错误码和说明 ——
-  // 因为后端的判断才是权威的（前端自己不判断表达式对不对）。
+  // Reaching this point means it is an error. Prefer the error code and message from the back-end —
+  // the back-end's judgement is authoritative (the front-end does not validate expressions itself).
   const code = (payload && payload.errorCode) || 'UNKNOWN_ERROR';
-  const message = (payload && payload.message) || `请求失败（HTTP ${response.status}）`;
+  const message = (payload && payload.message) || `Request failed (HTTP ${response.status})`;
   throw new ApiError(code, message, response.status);
 }
 
 /**
- * 提交表达式给后端计算。
+ * Submit an expression to the back-end for evaluation.
  *
- * ★ 这是整个前端唯一"要求结果"的地方。前端自己永远不算。
+ * This is the only place in the whole front-end that asks for a result.
+ * The front-end never computes one itself.
  *
- * @param {string} expression 表达式，ASCII 形式（* / - 而不是 × ÷ −）
+ * @param {string} expression expression in ASCII form (* / - instead of × ÷ −)
  * @returns {Promise<{expression: string, result: string, resultNumber: number}>}
  * @throws {ApiError}
  */
@@ -122,7 +135,7 @@ export async function calculate(expression) {
 }
 
 /**
- * 拉取历史记录。
+ * Fetch the history records.
  *
  * @param {{limit?: number, keyword?: string}} [options]
  * @returns {Promise<{items: Array, total: number, limit: number, keyword: string}>}
@@ -142,18 +155,18 @@ export async function fetchHistory(options = {}) {
 }
 
 /**
- * 删除一条历史记录。
+ * Delete one history record.
  *
  * @param {number} id
  * @returns {Promise<void>}
- * @throws {ApiError} 记录不存在时 code 为 'RECORD_NOT_FOUND'
+ * @throws {ApiError} code is 'RECORD_NOT_FOUND' when the record does not exist
  */
 export async function deleteHistory(id) {
   await request('/api/history/' + encodeURIComponent(String(id)), { method: 'DELETE' });
 }
 
 /**
- * 清空全部历史。
+ * Clear the whole history.
  *
  * @returns {Promise<{deleted: number}>}
  * @throws {ApiError}
@@ -163,29 +176,30 @@ export async function clearHistory() {
 }
 
 /**
- * 健康检查 —— 用来判断后端是否在线。
+ * Health check — used to tell whether the back-end is online.
  *
- * 为什么不复用其它接口：
- *   这个接口不查数据库、不做计算，永远秒回，
- *   适合在页面刚打开时快速判断"后端在不在"。
+ * Why not reuse another endpoint:
+ *   this one touches no database and does no computation, so it always answers instantly,
+ *   which makes it suitable for quickly telling "is the back-end there" right after the page opens.
  *
- * @returns {Promise<boolean>} 后端是否可用
+ * @returns {Promise<boolean>} whether the back-end is available
  */
 export async function checkHealth() {
   try {
     await request('/api/health');
     return true;
   } catch {
-    // 健康检查失败不是"错误"，只是一种状态，所以不抛异常。
-    // 上层据此把状态丸改成"后端未连接"。
+    // A failed health check is not an "error", just a state, so no exception is thrown.
+    // The caller uses it to switch the status pill to "back-end not connected".
     return false;
   }
 }
 
 /**
- * 当前使用的后端地址（只读，供自动化测试断言配置被正确读取）。
+ * The back-end URL currently in use (read-only; lets automated tests assert that the config is
+ * read correctly).
  *
- * 为什么导出它：测试需要确认"前端到底在往哪个地址发请求"。
- * 部署时最常见的故障就是地址写错，而界面上完全看不出来。
+ * Why export it: the tests need to confirm which address the front-end actually sends requests to.
+ * The most common deployment failure is a wrong address, and it is completely invisible in the UI.
  */
 export const API_BASE_URL_FOR_TEST = API_BASE_URL;
